@@ -15,10 +15,12 @@ const bubblePositions = [
 export const FloatingImageBubbles = () => {
   const { brandImages } = useBrand();
 
+  console.log('[FloatingImageBubbles] brandImages:', brandImages.length);
+
   if (!brandImages.length) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none -z-10">
+    <div className="fixed inset-0 pointer-events-none z-0">
       {brandImages.slice(0, bubblePositions.length).map((src, idx) => {
         const position = bubblePositions[idx];
         return (

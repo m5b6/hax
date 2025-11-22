@@ -26,6 +26,7 @@ export const WizardLayout = ({
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
+      <FloatingImageBubbles />
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-[3px] bg-black/5 z-50">
         <motion.div
@@ -42,7 +43,6 @@ export const WizardLayout = ({
       </div>
 
       <main className="w-full max-w-2xl mx-auto relative z-10">
-        <FloatingImageBubbles />
         <AnimatePresence mode="wait" custom={currentStep}>
           <motion.div
             key={currentStep}

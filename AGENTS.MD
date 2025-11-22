@@ -71,9 +71,9 @@ A medida que el modelo streaméa su respuesta:
 
 - **Dark Apple**:
   - Fondo oscuro suave, no negro puro.
-  - Glass panels translúcidos con blur profundo.
+  - Glass panels blancos translúcidos con blur profundo.
 - **Liquid glass**:
-  - Contenedores semitransparentes, bordes suaves, brillo sutil.
+  - Superficies blancas semitransparentes, bordes suaves, brillo sutil.
 - **Chromatic highlights**:
   - Gradientes suaves inspirados en Apple Intelligence (azules, violetas, cian, fucsia), usados solo como acentos.
 - **Tipografía**:
@@ -115,7 +115,7 @@ A medida que el modelo streaméa su respuesta:
      - copys,
      - públicos,
      - recomendaciones.
-   - Todo presentado dentro de un gran panel de glass oscuro, con un gradiente sutil y sensación de “entrega final”.
+   - Todo presentado dentro de un gran panel de glass blanco, con un gradiente sutil y sensación de "entrega final".
 
 ---
 
