@@ -69,11 +69,10 @@ export const WizardLayout = ({
               {title && (
                 <header className="mb-10 text-center space-y-3">
                   <motion.h1 
-                    key={title}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="text-3xl sm:text-4xl tracking-tight text-slate-900"
+                    className="text-3xl sm:text-4xl tracking-tight text-slate-900 font-bold"
                     style={{ fontFamily: 'var(--font-instrument-serif), serif' }}
                   >
                     {title}

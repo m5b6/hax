@@ -9,6 +9,7 @@ import ShinyText from "./ShinyText";
 interface StepIdentityProps {
   onNext: (data: any) => void;
   onAnalyzingChange?: (isAnalyzing: boolean) => void;
+  onNameChange?: (name: string) => void;
 }
 
 type InsightType = "style" | "info" | "products" | "services" | "target_audience" | "tone" | "pricing" | "features" | "integrations" | "tech_stack";
@@ -51,7 +52,7 @@ const insightColors: Record<InsightType, string> = {
   tech_stack: "from-slate-500 to-gray-600",
 };
 
-export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) => {
+export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepIdentityProps) => {
   const [name, setName] = useState("");
   const [identity, setIdentity] = useState("");
   const [urls, setUrls] = useState<string[]>([""]);
@@ -59,6 +60,15 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
   const [productName, setProductName] = useState("");
   const [urlAnalyses, setUrlAnalyses] = useState<Map<string, URLAnalysis>>(new Map());
   const [analyzingUrls, setAnalyzingUrls] = useState<Set<string>>(new Set());
+  const [toolStatus, setToolStatus] = useState<Map<string, { toolName?: string; status: "calling" | "executing" | "complete" }>>(new Map());
+
+  useEffect(() => {
+    onNameChange?.(name);
+  }, [name, onNameChange]);
+
+  useEffect(() => {
+    onAnalyzingChange?.(analyzingUrls.size > 0);
+  }, [analyzingUrls.size, onAnalyzingChange]);
 
   const addUrl = () => setUrls([...urls, ""]);
   const removeUrl = (index: number) => {
@@ -81,10 +91,10 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
     
     setAnalyzingUrls((prev) => {
       const newSet = new Set(prev).add(url);
-      onAnalyzingChange?.(newSet.size > 0);
       return newSet;
     });
     setUrlAnalyses((prev) => new Map(prev).set(url, { url, insights: [] }));
+    const urlToolStatus = new Map<string, { toolName?: string; status: "calling" | "executing" | "complete" }>();
 
     try {
       const response = await fetch("/api/agent/analyze-urls", {
@@ -111,13 +121,51 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith("8:")) {
-            const jsonStr = line.slice(2);
+          if (!line.trim()) continue;
+
+          console.log("[Stream] Raw line:", line);
+
+          if (line.startsWith("6:")) {
+            console.log("[Stream] Tool call chunk:", line.slice(2));
             try {
-              const parsed = JSON.parse(jsonStr);
+              const toolCallData = JSON.parse(line.slice(2));
+              console.log("[Stream] Parsed tool call:", toolCallData);
+              if (toolCallData && toolCallData.toolCallId) {
+                urlToolStatus.set(toolCallData.toolCallId, {
+                  toolName: toolCallData.toolName || "tool",
+                  status: "calling",
+                });
+                setToolStatus(new Map(urlToolStatus));
+              }
+            } catch (e) {
+              console.error("[Stream] Error parsing tool call:", e);
+            }
+          } else if (line.startsWith("7:")) {
+            console.log("[Stream] Tool result chunk:", line.slice(2));
+            try {
+              const toolResultData = JSON.parse(line.slice(2));
+              console.log("[Stream] Parsed tool result:", toolResultData);
+              if (toolResultData && toolResultData.toolCallId) {
+                const existing = urlToolStatus.get(toolResultData.toolCallId);
+                if (existing) {
+                  urlToolStatus.set(toolResultData.toolCallId, {
+                    ...existing,
+                    status: "complete",
+                  });
+                  setToolStatus(new Map(urlToolStatus));
+                }
+              }
+            } catch (e) {
+              console.error("[Stream] Error parsing tool result:", e);
+            }
+          } else if (line.startsWith("8:")) {
+            console.log("[Stream] Structured output chunk:", line.slice(2));
+            try {
+              const parsed = JSON.parse(line.slice(2));
+              console.log("[Stream] Parsed structured output:", parsed);
               if (parsed && parsed.insights && Array.isArray(parsed.insights)) {
+                console.log("[Stream] Updating insights:", parsed.insights);
                 setUrlAnalyses((prev) => {
-                  const current = prev.get(url) || { url, insights: [] };
                   return new Map(prev).set(url, {
                     url,
                     insights: parsed.insights,
@@ -125,7 +173,10 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
                 });
               }
             } catch (e) {
+              console.error("[Stream] Error parsing structured output:", e, "Raw:", line.slice(2));
             }
+          } else {
+            console.log("[Stream] Unknown chunk type:", line.substring(0, 10));
           }
         }
       }
@@ -135,7 +186,6 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
       setAnalyzingUrls((prev) => {
         const newSet = new Set(prev);
         newSet.delete(url);
-        onAnalyzingChange?.(newSet.size > 0);
         return newSet;
       });
     }
@@ -227,7 +277,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
                     <div className="relative flex-1">
                       <Input
                         placeholder="https://..."
-                        className="glass-input h-14 rounded-[1.25rem] px-5 pr-32"
+                        className="glass-input h-16 text-lg rounded-[1.25rem] px-5 pr-32"
                         value={url}
                         onChange={(e) => updateUrl(index, e.target.value)}
                       />
@@ -299,7 +349,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
         <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/80 rounded-[1.5rem] border border-slate-200/50 shadow-inner">
           <button
             onClick={() => setType("producto")}
-            className={`py-4 rounded-[1.25rem] text-[15px] font-medium transition-all duration-300 relative overflow-hidden ${
+            className={`py-4 rounded-[1.25rem] text-lg font-medium transition-all duration-300 relative overflow-hidden ${
               type === "producto"
                 ? "text-slate-900"
                 : "text-slate-400 hover:text-slate-600"
@@ -308,10 +358,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
             {type === "producto" && (
               <motion.div 
                 layoutId="activeTab"
-                className="absolute inset-0 bg-white rounded-[1.25rem] border border-slate-200/50"
-                style={{
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
-                }}
+                className="absolute inset-0 glass-input rounded-[1.25rem]"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
@@ -319,7 +366,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
           </button>
           <button
             onClick={() => setType("servicio")}
-            className={`py-4 rounded-[1.25rem] text-[15px] font-medium transition-all duration-300 relative overflow-hidden ${
+            className={`py-4 rounded-[1.25rem] text-lg font-medium transition-all duration-300 relative overflow-hidden ${
               type === "servicio"
                 ? "text-slate-900"
                 : "text-slate-400 hover:text-slate-600"
@@ -328,10 +375,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
             {type === "servicio" && (
               <motion.div 
                 layoutId="activeTab"
-                className="absolute inset-0 bg-white rounded-[1.25rem] border border-slate-200/50"
-                style={{
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
-                }}
+                className="absolute inset-0 glass-input rounded-[1.25rem]"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}

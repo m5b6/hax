@@ -11,6 +11,7 @@ export default function WizardPage() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<any>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [businessName, setBusinessName] = useState("");
 
   const handleNext = (newData: any) => {
     setData((prev: any) => ({ ...prev, ...newData }));
@@ -19,7 +20,7 @@ export default function WizardPage() {
 
   const getStepTitle = (stepIndex: number) => {
     if (stepIndex === 0) {
-      return data.name ? `Cuéntanos sobre ${data.name}` : "Cuéntanos sobre tu negocio";
+      return businessName ? `Cuéntanos sobre ${businessName}` : "Cuéntanos sobre tu negocio";
     }
     return steps[stepIndex].title;
   };
@@ -28,7 +29,7 @@ export default function WizardPage() {
     {
       title: "Cuéntanos sobre tu negocio",
       subtitle: "Empecemos por lo básico para entender qué ofreces.",
-      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} />,
+      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} onNameChange={setBusinessName} />,
     },
     {
       title: "Identidad de Marca",
