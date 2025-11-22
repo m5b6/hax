@@ -17,7 +17,7 @@ type WorkflowStep =
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { contentMatrix, designBrief, imageUrl, targetPhase } = body;
+        const { contentMatrix, designBrief, imageUrl } = body;
 
         // Validar que al menos contentMatrix esté presente
         if (!contentMatrix) {
@@ -51,11 +51,7 @@ export async function POST(request: Request) {
                     if (designBrief) {
                         imagePromptContent += `\n\nBRIEF DE DISEÑO:\n${JSON.stringify(designBrief, null, 2)}`;
                     }
-                    if (targetPhase) {
-                        imagePromptContent += `\n\nFASE ESPECÍFICA:\nGenera la imagen para la fase: ${targetPhase}`;
-                    } else {
-                        imagePromptContent += `\n\nFASE ESPECÍFICA:\nGenera la imagen para la fase GANCHO (inicio del video)`;
-                    }
+                    imagePromptContent += `\n\nGenera una imagen base versátil que funcione para todo el video, considerando todas las fases de la matriz.`;
 
                     const imagePromptResult = await imagePromptAgent.generate(imagePromptContent);
                     const imagePrompt = imagePromptResult.text;

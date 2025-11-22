@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { contentMatrix, designBrief, targetPhase } = body;
+        const { contentMatrix, designBrief } = body;
 
         // Validar que al menos contentMatrix esté presente
         if (!contentMatrix) {
@@ -22,11 +22,7 @@ export async function POST(request: Request) {
             prompt += `\n\nBRIEF DE DISEÑO:\n${JSON.stringify(designBrief, null, 2)}`;
         }
 
-        if (targetPhase) {
-            prompt += `\n\nFASE ESPECÍFICA:\nGenera la imagen para la fase: ${targetPhase}`;
-        } else {
-            prompt += `\n\nFASE ESPECÍFICA:\nGenera la imagen para la fase GANCHO (inicio del video)`;
-        }
+        prompt += `\n\nGenera una imagen base versátil que funcione para todo el video, considerando todas las fases de la matriz.`;
 
         // Generar el prompt usando streaming
         const agent = mastra.getAgent("imagePromptAgent");
