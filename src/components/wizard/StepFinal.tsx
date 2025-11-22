@@ -1,14 +1,19 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users } from "lucide-react";
+import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon } from "lucide-react";
+import { Instagram } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
-import CircularGallery from "./CircularGallery";
+import { motion, AnimatePresence } from "framer-motion";
+import DomeGallery from "./DomeGallery";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { useBrand } from "@/contexts/BrandContext";
 import { StepTransitionLoader } from "./StepTransitionLoader";
+import { RotatingLoader } from "@/components/ui/rotating-loader";
 import type { RotatingLoaderItem } from "@/components/ui/rotating-loader";
+
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0iI2NjYyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjwvdGV4dD48L3N2Zz4=';
 
 // Helper to get icon component by name from lucide-react
 const getIconByName = (iconName: string): LucideIcon => {
@@ -32,7 +37,8 @@ const getIconByName = (iconName: string): LucideIcon => {
 
 export const StepFinal = () => {
   const wizardStore = useWizardStore();
-
+  const { brandLogoUrl } = useBrand();
+  
   // Get all data from store
   const data = {
     name: wizardStore.getInput("name"),
@@ -103,73 +109,213 @@ export const StepFinal = () => {
   }, [selectedOptions]);
 
   const [isGenerating, setIsGenerating] = useState(true);
-  const [generatedPosts, setGeneratedPosts] = useState<Array<{
-    id: number;
-    description: string;
-    imageUrl?: string;
-    imageError?: string;
-  }> | null>(null);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-
-  const hasGenerated = React.useRef(false);
+  const [streamedPrompt, setStreamedPrompt] = useState("");
+  const [videoPrompt, setVideoPrompt] = useState<string | null>(null);
+  const hasGeneratedRef = useRef(false);
+  const promptContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const generateImages = async () => {
-      if (hasGenerated.current) return;
-      hasGenerated.current = true;
+    // Only generate once when component mounts
+    if (hasGeneratedRef.current) return;
+    hasGeneratedRef.current = true;
+
+    const generateVideoPrompt = async () => {
+      const wizardData = {
+        inputs: wizardStore.getAllInputs(),
+        agentResponses: wizardStore.getAllAgentResponses(),
+        metadata: wizardStore.data.metadata,
+      };
 
       try {
-        // Get all wizard data
-        const wizardData = {
-          inputs: wizardStore.getAllInputs(),
-          agentResponses: wizardStore.getAllAgentResponses(),
-          metadata: wizardStore.data.metadata,
-        };
-
-        console.log("🎨 Calling post-generation endpoint...", wizardData);
-
-        const response = await fetch('/api/workflow/post-generation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(wizardData),
+        const response = await fetch("/api/agent/video-prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wizardData }),
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error("Failed to generate video prompt");
         }
 
-        const result = await response.json();
-
-        if (result.success && result.posts) {
-          console.log("✅ Posts generated successfully:", result.posts);
-          setGeneratedPosts(result.posts);
-        } else {
-          throw new Error(result.error || "Failed to generate posts");
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("No reader available");
         }
+
+        const decoder = new TextDecoder();
+        let fullPrompt = "";
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            // Process any remaining buffer
+            if (buffer.trim()) {
+              fullPrompt += buffer;
+              setStreamedPrompt(fullPrompt);
+            }
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          
+          // Keep the last incomplete line in buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            // AI SDK format: lines starting with "0:" contain the text content
+            // Format: "0:" followed by JSON-encoded string
+            if (line.startsWith("0:")) {
+              try {
+                const content = line.slice(2).trim();
+                // Parse the JSON-encoded content
+                const textContent = JSON.parse(content);
+                if (typeof textContent === "string") {
+                  fullPrompt += textContent;
+                  setStreamedPrompt(fullPrompt);
+                  // Auto-scroll to bottom
+                  setTimeout(() => {
+                    if (promptContainerRef.current) {
+                      promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+                    }
+                  }, 0);
+                }
+              } catch (e) {
+                // If parsing fails, try to extract text directly
+                const textContent = line.slice(2).trim();
+                // Remove surrounding quotes if present
+                const cleaned = textContent.replace(/^["']|["']$/g, "");
+                if (cleaned) {
+                  fullPrompt += cleaned;
+                  setStreamedPrompt(fullPrompt);
+                  // Auto-scroll to bottom
+                  setTimeout(() => {
+                    if (promptContainerRef.current) {
+                      promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+                    }
+                  }, 0);
+                }
+              }
+            } else if (line.trim() && !line.startsWith("data:") && !line.startsWith("{")) {
+              // Fallback: if it's not AI SDK format, treat as plain text
+              // This handles cases where toTextStreamResponse returns plain text
+              fullPrompt += line + "\n";
+              setStreamedPrompt(fullPrompt);
+              // Auto-scroll to bottom
+              setTimeout(() => {
+                if (promptContainerRef.current) {
+                  promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+                }
+              }, 0);
+            }
+          }
+        }
+
+        // Save final prompt to store
+        setVideoPrompt(fullPrompt);
+        wizardStore.setAgentResponse("videoPrompt", fullPrompt);
+        setIsGenerating(false);
       } catch (error) {
-        console.error("Error generating posts:", error);
-        setGenerationError(error instanceof Error ? error.message : "Unknown error");
-      } finally {
+        console.error("Error generating video prompt:", error);
         setIsGenerating(false);
       }
     };
 
-    generateImages();
+    generateVideoPrompt();
   }, [wizardStore]);
 
-  if (isGenerating) {
-    return (
-      <StepTransitionLoader
-        items={[
-          { text: "Generando conceptos creativos", icon: Sparkles },
-          { text: "Creando imágenes con IA", icon: Palette },
-          { text: "Optimizando para historias", icon: Film },
-        ]}
-        title="Generando tus historias..."
-        gradientColors={gradientColors}
-      />
-    );
-  }
+  // Auto-scroll to bottom when streamedPrompt updates
+  useEffect(() => {
+    if (streamedPrompt && promptContainerRef.current) {
+      promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+    }
+  }, [streamedPrompt]);
+
+  // Get video prompt from store or state
+  const finalVideoPrompt = videoPrompt || wizardStore.getAgentResponse("videoPrompt") || "";
+  const displayPrompt = isGenerating ? streamedPrompt : finalVideoPrompt;
+
+  // Video generation state
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [videoResult, setVideoResult] = useState<string | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
+  const hasGeneratedVideoRef = useRef(false);
+
+  // Trigger video generation when prompt is ready
+  useEffect(() => {
+    if (!displayPrompt || isGenerating || hasGeneratedVideoRef.current) return;
+    
+    // Check if we already have a result in store
+    const existingVideo = wizardStore.getAgentResponse("videoResult");
+    if (existingVideo) {
+      setVideoResult(existingVideo);
+      setShowGallery(true);
+      return;
+    }
+
+    hasGeneratedVideoRef.current = true;
+    setIsGeneratingVideo(true);
+    setShowGallery(true);
+
+    const generateVideo = async () => {
+      try {
+        // Try to find an image from analysis
+        const analysis = wizardStore.getAgentResponse("urlAnalyses");
+        let imageUrl = "";
+        
+        // Safe navigation to find first valid image
+        if (analysis && Array.isArray(analysis)) {
+            for (const result of analysis) {
+                if (result?.images && result.images.length > 0) {
+                    imageUrl = result.images[0];
+                    break;
+                }
+            }
+        } else if (analysis?.images && analysis.images.length > 0) {
+             imageUrl = analysis.images[0];
+        }
+
+        // If no image found in analysis, use a fallback or let API handle default
+        if (!imageUrl) {
+             // Try to get from urls input directly if it's an image url? 
+             // Unlikely for "urls" input which is usually a website.
+             // We'll let the API use its hardcoded fallback or fail.
+             console.log("No source image found, using API fallback");
+        }
+
+        const response = await fetch("/api/agent/generate-video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            promptText: displayPrompt,
+            imageUrl: imageUrl 
+          }),
+        });
+
+        if (!response.ok) throw new Error("Failed to generate video");
+        
+        const data = await response.json();
+        
+        if (data.output && Array.isArray(data.output) && data.output.length > 0) {
+            const videoUrl = data.output[0];
+            setTimeout(() => {
+              setVideoResult(videoUrl);
+              wizardStore.setAgentResponse("videoResult", videoUrl);
+              setIsGeneratingVideo(false);
+            }, 5000);
+        }
+      } catch (error) {
+        console.error("Error generating video:", error);
+        setIsGeneratingVideo(false);
+      }
+    };
+
+    generateVideo();
+  }, [displayPrompt, isGenerating, wizardStore]);
 
   // Show error state if generation failed
   if (generationError) {
@@ -185,169 +331,301 @@ export const StepFinal = () => {
   }
 
   return (
-    <div className="space-y-12">
-      <div className="text-center mb-12">
-        <motion.div
-          initial={{ scale: 0, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="inline-flex items-center justify-center w-24 h-24 bg-[#30D158]/10 text-[#30D158] rounded-full mb-8 ring-1 ring-[#30D158]/20 backdrop-blur-xl"
+    <div className="space-y-0">
+      {/* Video Prompt Card - Always show, even before streaming starts */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <Card className="border-none overflow-hidden rounded-xl bg-white relative transition-shadow duration-700"
           style={{
-            boxShadow: '0 4px 12px rgba(48,209,88,0.15), inset 0 1px 0 rgba(255,255,255,0.3)'
+            boxShadow: displayPrompt 
+              ? '0 10px 30px -5px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)' 
+              : '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
           }}
         >
-          <CheckCircle2 className="w-12 h-12 stroke-[1.5]" />
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2 text-slate-900 font-medium">
+                {isGenerating ? (
+                  <>
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span>Guía Visual</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
+                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                    </div>
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span>Guía Visual</span>
+                    <span className="text-xs text-slate-400 font-normal ml-1">
+                      ({(new TextEncoder().encode(displayPrompt).length / 1024).toFixed(1)} KB)
+                    </span>
+                  </>
+                )}
+              </CardTitle>
+              {!isGenerating && displayPrompt && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(finalVideoPrompt);
+                  }}
+                  className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-4">
+            {isGenerating && !displayPrompt ? (
+              // Show loading state when starting, before any content streams
+              <div className="flex items-center justify-center py-8">
+                <RotatingLoader
+                  items={[
+                    { text: "Generando guión", icon: Video },
+                    { text: "Analizando contenido", icon: Sparkles },
+                    { text: "Creando prompt", icon: Palette },
+                  ]}
+                  spinnerSize="sm"
+                  textSize="sm"
+                  interval={2000}
+                  showSpinner={false}
+                  className="text-slate-500"
+                />
+              </div>
+            ) : displayPrompt ? (
+              // Show content when streaming or complete
+              <div 
+                ref={promptContainerRef}
+                className="overflow-y-auto max-h-[140px]"
+              >
+                {isGenerating && (
+                  // Show loading indicator inside card content during streaming
+                  <div className="mb-3 flex items-center justify-center">
+                    <RotatingLoader
+                      items={[
+                        { text: "Generando guía visual", icon: Video },
+                        { text: "Analizando contenido", icon: Sparkles },
+                        { text: "Creando prompt", icon: Palette },
+                      ]}
+                      spinnerSize="sm"
+                      textSize="sm"
+                      interval={2000}
+                      showSpinner={false}
+                      className="text-slate-500"
+                    />
+                  </div>
+                )}
+                <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50/50 p-4 rounded-lg border border-slate-100"
+                  style={{
+                    fontSize: '0.7rem',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {displayPrompt}
+                </pre>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Connecting Flow - Active Data Link */}
+      {!isGenerating && displayPrompt && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-center -my-1 relative z-0"
+        >
+          <div className="relative flex flex-col items-center h-16">
+            {/* The Beam */}
+            <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
+              <motion.div
+                className="absolute top-0 left-0 w-full bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500"
+                initial={{ height: "0%" }}
+                animate={{ height: "100%" }}
+                transition={{ duration: 0.8, ease: "circOut" }}
+              />
+              {/* Light Pulse */}
+              <motion.div
+                className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
+                animate={{ top: ["-100%", "200%"] }}
+                transition={{ 
+                  duration: 1.5, 
+                  repeat: Infinity, 
+                  ease: "linear",
+                  repeatDelay: 0.5 
+                }}
+              />
+            </div>
+
+            {/* Connection Nodes */}
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1 }}
+              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10" 
+            />
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.7 }}
+              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10" 
+            />
+          </div>
         </motion.div>
+      )}
+
+      {/* Generating Posts Block - Show when first card is complete */}
+      {!isGenerating && displayPrompt && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ duration: 0.4 }}
         >
-          <h2 className="text-4xl font-bold text-slate-900 tracking-tight mb-4">¡Tu campaña está lista!</h2>
-          <p className="text-slate-500 text-xl font-light">
-            Todo listo para lanzar en Meta Ads.
-          </p>
-        </motion.div>
-      </div>
-
-      <div className="grid gap-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
+          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
             style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
+              boxShadow: '0 -10px 30px -5px rgba(236, 72, 153, 0.15), 0 0 0 1px rgba(236, 72, 153, 0.1)'
             }}
           >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8 relative z-10">
-              <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
-                <span className="text-2xl">🎨</span> Imágenes Generadas
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+              <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
+                <div className="flex items-center gap-2">
+                    {isGeneratingVideo ? (
+                        <Video className="w-4 h-4 text-slate-500" />
+                    ) : (
+                        <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
+                            <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                        </div>
+                    )}
+                    <span>Contenido Generado</span>
+                </div>
+                {videoResult && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
+                        <Share2 className="w-3 h-3 text-slate-400" />
+                    </Button>
+                )}
               </CardTitle>
             </CardHeader>
-            <div className="w-full h-[600px] bg-white relative overflow-hidden">
-              {generatedPosts && generatedPosts.length > 0 && generatedPosts.some(p => p.imageUrl) ? (
-                <CircularGallery
-                  items={generatedPosts
-                    .filter(post => post.imageUrl)
-                    .map(post => ({
-                      image: post.imageUrl!,
-                      text: `Historia ${post.id}`
-                    }))}
-                  bend={3}
-                  textColor="#1e293b"
-                  borderRadius={0.05}
-                  scrollEase={0.02}
-                  scrollSpeed={2}
-                />
+            <CardContent className="p-0">
+              {isGeneratingVideo ? (
+                <div className="flex items-center justify-center py-12">
+                  <RotatingLoader
+                    items={[
+                      { text: "Renderizando video", icon: Video },
+                      { text: "Aplicando efectos", icon: Sparkles },
+                      { text: "Finalizando", icon: Film },
+                    ]}
+                    spinnerSize="sm"
+                    textSize="sm"
+                    interval={2000}
+                    showSpinner={false}
+                    className="text-slate-500"
+                  />
+                </div>
+              ) : showGallery ? (
+                 <div className="w-full h-[500px] bg-white">
+                    <DomeGallery
+                      images={Array.from({ length: 75 }, () => PLACEHOLDER_IMAGE)}
+                      videoUrl={videoResult || undefined}
+                      logoUrl={brandLogoUrl}
+                      name={data.name}
+                      grayscale={false}
+                      segments={15}
+                    />
+                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-slate-400">
-                  {generationError ? "Error al generar imágenes" : "Cargando imágenes..."}
+                <div className="p-8 text-center text-slate-400 text-sm">
+                    No se pudo generar el video.
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Connecting Flow - Active Data Link to Upload Step */}
+      {!isGenerating && displayPrompt && videoResult && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-center -my-1 relative z-0"
+        >
+          <div className="relative flex flex-col items-center h-16">
+            {/* The Beam */}
+            <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
+              <motion.div
+                className="absolute top-0 left-0 w-full bg-gradient-to-b from-pink-500 via-purple-500 to-blue-500"
+                initial={{ height: "0%" }}
+                animate={{ height: "100%" }}
+                transition={{ duration: 0.8, ease: "circOut", delay: 0.2 }}
+              />
+              {/* Light Pulse */}
+              <motion.div
+                className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
+                animate={{ top: ["-100%", "200%"] }}
+                transition={{ 
+                  duration: 1.5, 
+                  repeat: Infinity, 
+                  ease: "linear",
+                  repeatDelay: 0.5 
+                }}
+              />
             </div>
-          </Card>
-        </motion.div>
 
+            {/* Connection Nodes */}
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10" 
+            />
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.9 }}
+              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10" 
+            />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Upload to Instagram Step */}
+      {!isGenerating && displayPrompt && videoResult && (
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
         >
-          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
+          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
             style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
+              boxShadow: '0 10px 30px -5px rgba(64, 201, 255, 0.2), 0 0 0 1px rgba(64, 201, 255, 0.1)'
             }}
           >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8">
-              <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
-                <span className="text-2xl">✍️</span> Copy Sugerido
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium text-xs text-[#007AFF] uppercase tracking-[0.2em]">Opción 1: Directa</p>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="text-slate-600 leading-relaxed bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 font-light text-[17px]"
-                  style={{
-                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
-                  }}
-                >
-                  <p>¿Buscas <span className="text-slate-900 font-semibold">{data.productName}</span>? 🚀</p>
-                  <br />
-                  <p>Descubre la solución perfecta para <span className="text-slate-900">{data.strategy?.audience || "ti"}</span>.
-                    Calidad garantizada y resultados inmediatos.</p>
-                  <br />
-                  <p className="text-[#007AFF] font-medium">👉 Compra aquí: {data.urls?.[0]}</p>
-                </div>
-              </div>
+            <CardContent className="p-6">
+              <Button
+                onClick={() => {
+                  window.open('https://www.instagram.com/create/select/', '_blank');
+                }}
+                className="w-full px-8 py-6 text-base font-medium text-white rounded-full flex items-center justify-center gap-2"
+                style={{
+                  background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                  boxShadow: '0 4px 20px rgba(188, 24, 136, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <Instagram className="w-5 h-5" />
+                Subir a Instagram
+              </Button>
             </CardContent>
           </Card>
         </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-        >
-          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
-            style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
-            }}
-          >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8">
-              <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
-                <span className="text-2xl">🎯</span> Segmentación
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[
-                { label: "Ubicación", value: data.strategy?.location },
-                { label: "Intereses", value: data.type === "producto" ? "Compras online, Lujo" : "Negocios, Emprendimiento" },
-                { label: "Edad", value: "25 - 45 años" },
-                { label: "Objetivo", value: data.strategy?.goal },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="bg-slate-50/50 p-6 rounded-[1.5rem] border border-slate-100 hover:bg-white transition-all group"
-                  style={{
-                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
-                  }}
-                >
-                  <p className="text-[11px] text-slate-400 uppercase tracking-widest mb-3 font-medium group-hover:text-slate-500 transition-colors">{item.label}</p>
-                  <p className="font-medium text-lg text-slate-900 tracking-wide">{item.value}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      <div className="pt-12 pb-8 flex justify-center gap-4">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => window.location.reload()}
-          className="glass-button-secondary h-14 rounded-full px-8 text-[15px]"
-        >
-          Comenzar de nuevo
-        </Button>
-        <Button
-          size="lg"
-          className="glass-button-primary h-14 rounded-full px-8 text-[15px] font-semibold"
-        >
-          <Share2 className="w-4 h-4 mr-2" /> Exportar PDF
-        </Button>
-      </div>
+      )}
     </div>
   );
 };

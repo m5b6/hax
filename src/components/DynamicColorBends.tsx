@@ -9,7 +9,7 @@ export default function DynamicColorBends() {
   return (
     <ColorBends 
       transparent={false}
-      colors={brandColors.length > 0 ? brandColors : ['#40C9FF', '#E81CFF', '#FF9F0A']}
+      colors={brandColors}
       speed={0.5}
       frequency={1}
       warpStrength={1}

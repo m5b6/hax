@@ -108,6 +108,9 @@ export interface AgentResponse {
     [key: string]: any;
   };
   
+  // Video prompt (from video-prompt agent)
+  videoPrompt?: string;
+  
   // Any other agent responses
   [key: string]: any;
 }

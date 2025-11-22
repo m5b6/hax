@@ -21,6 +21,11 @@ export const mastra = new Mastra({
     postExtractor2Agent,
     postExtractor3Agent
   },
+import { runwayVideoAgent } from "./agents/runway-video-agent";
+
+
+export const mastra = new Mastra({
+  agents: { urlAnalyzerAgent, videoPromptAgent, imagePromptAgent, mcqAgent, runwayVideoAgent },
 });
 
 

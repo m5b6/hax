@@ -288,13 +288,139 @@ class Media {
       transparent: true
     });
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = this.image;
-    img.onload = () => {
-      texture.image = img;
-      this.program.uniforms.uImageSizes.value = [img.naturalWidth, img.naturalHeight];
-    };
+    // Check if it's a video URL
+    const isVideo = this.image.match(/\.(mp4|webm|mov|avi)$/i) || this.image.includes('cloudfront.net') || this.image.includes('video');
+    
+    if (isVideo) {
+      // Handle video: create video element and capture frames
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.src = this.image;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.setAttribute('autoplay', 'true');
+      video.setAttribute('preload', 'auto');
+      video.setAttribute('playsinline', 'true');
+      
+      // Add video to DOM (hidden) to help with autoplay policies
+      video.style.position = 'fixed';
+      video.style.opacity = '0';
+      video.style.pointerEvents = 'none';
+      video.style.width = '1px';
+      video.style.height = '1px';
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.zIndex = '-1';
+      document.body.appendChild(video);
+      
+      // Create canvas to capture video frames
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      let animationFrameId: number;
+      let isPlaying = false;
+      
+      const tryPlay = async () => {
+        if (isPlaying) return;
+        
+        try {
+          if (video.readyState >= 2) {
+            await video.play();
+            isPlaying = true;
+            console.log('[CircularGallery] Video playing successfully');
+          }
+        } catch (err) {
+          console.warn('[CircularGallery] Autoplay blocked, will retry:', err);
+          // Try again after user interaction
+          const playOnInteraction = () => {
+            video.play().then(() => {
+              isPlaying = true;
+              document.removeEventListener('click', playOnInteraction);
+              document.removeEventListener('touchstart', playOnInteraction);
+            }).catch(() => {});
+          };
+          document.addEventListener('click', playOnInteraction, { once: true });
+          document.addEventListener('touchstart', playOnInteraction, { once: true });
+        }
+      };
+      
+      const updateTexture = () => {
+        if (video.readyState >= video.HAVE_CURRENT_DATA && ctx && video.videoWidth > 0) {
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          texture.image = canvas;
+          texture.needsUpdate = true;
+        }
+        animationFrameId = requestAnimationFrame(updateTexture);
+      };
+      
+      video.onloadedmetadata = () => {
+        this.program.uniforms.uImageSizes.value = [video.videoWidth, video.videoHeight];
+        canvas.width = video.videoWidth || 1920;
+        canvas.height = video.videoHeight || 1080;
+        console.log('[CircularGallery] Video metadata loaded:', video.videoWidth, 'x', video.videoHeight);
+      };
+      
+      video.addEventListener('loadeddata', () => {
+        console.log('[CircularGallery] Video loadeddata event');
+        tryPlay();
+        updateTexture();
+      });
+      
+      video.addEventListener('canplay', () => {
+        console.log('[CircularGallery] Video canplay event');
+        tryPlay();
+        if (!animationFrameId) {
+          updateTexture();
+        }
+      });
+      
+      video.addEventListener('canplaythrough', () => {
+        console.log('[CircularGallery] Video canplaythrough event');
+        tryPlay();
+      });
+      
+      video.addEventListener('play', () => {
+        console.log('[CircularGallery] Video play event');
+        isPlaying = true;
+      });
+      
+      video.addEventListener('pause', () => {
+        console.log('[CircularGallery] Video paused, attempting to resume');
+        if (video.paused) {
+          video.play().catch(() => {});
+        }
+      });
+      
+      // Start loading and playing immediately
+      video.load();
+      
+      // Aggressive play attempts
+      setTimeout(() => tryPlay(), 100);
+      setTimeout(() => tryPlay(), 500);
+      setTimeout(() => tryPlay(), 1000);
+      setTimeout(() => tryPlay(), 2000);
+      
+      // Start texture update loop immediately
+      updateTexture();
+      
+      // Store video reference for cleanup if needed
+      (this as any).videoElement = video;
+      (this as any).animationFrameId = animationFrameId;
+    } else {
+      // Handle image normally
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = this.image;
+      img.onload = () => {
+        texture.image = img;
+        this.program.uniforms.uImageSizes.value = [img.naturalWidth, img.naturalHeight];
+      };
+    }
   }
 
   createMesh() {
@@ -644,6 +770,26 @@ class App {
     window.removeEventListener('touchstart', this.boundOnTouchDown);
     window.removeEventListener('touchmove', this.boundOnTouchMove);
     window.removeEventListener('touchend', this.boundOnTouchUp);
+    
+    // Cleanup video elements
+    if (this.medias) {
+      this.medias.forEach(media => {
+        const videoElement = (media as any).videoElement;
+        const animationFrameId = (media as any).animationFrameId;
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+        }
+        if (videoElement) {
+          videoElement.pause();
+          videoElement.src = '';
+          videoElement.load();
+          if (videoElement.parentNode) {
+            videoElement.parentNode.removeChild(videoElement);
+          }
+        }
+      });
+    }
+    
     if (this.renderer && this.renderer.gl && this.renderer.gl.canvas.parentNode) {
       this.renderer.gl.canvas.parentNode.removeChild(this.renderer.gl.canvas as HTMLCanvasElement);
     }
