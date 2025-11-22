@@ -73,6 +73,8 @@ export interface AgentResponse {
       usefulFor: string;
       howItLooks: string;
       whyItWorks: string;
+      color: string;
+      icon: string;
     }>;
   }>;
   mcqAnswers?: Record<string, string>;

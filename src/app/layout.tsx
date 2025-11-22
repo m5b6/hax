@@ -5,12 +5,19 @@ import { BrandProvider } from "@/contexts/BrandContext";
 import { WizardStoreProvider } from "@/contexts/WizardStore";
 import DynamicColorBends from "@/components/DynamicColorBends";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+});
 const instrumentSerif = Instrument_Serif({ 
   subsets: ["latin"],
   weight: ["400"],
   variable: "--font-instrument-serif",
 });
+// Using Inter as Instrument Sans - Instrument Sans font may not be available
+// We'll use Inter with a specific style for MCQ titles
+const instrumentSans = inter; // Fallback to Inter for now
 
 export const metadata: Metadata = {
   title: "Copiloto de Campañas",

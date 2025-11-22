@@ -13,6 +13,8 @@ const mcqOptionSchema = z.object({
   usefulFor: z.string(),
   howItLooks: z.string(),
   whyItWorks: z.string(),
+  color: z.string(),
+  icon: z.string(),
 });
 
 const mcqSchema = z.object({

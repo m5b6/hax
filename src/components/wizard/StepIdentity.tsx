@@ -3,12 +3,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
-import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil } from "lucide-react";
+import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil, Sparkles, Search, Eye } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InsightsChip } from "./InsightsChip";
 import { useBrand } from "@/contexts/BrandContext";
 import { useWizardStore } from "@/contexts/WizardStore";
 import { URLAnalysis, Insight } from "@/types/wizard";
+import { RotatingLoader } from "@/components/ui/rotating-loader";
 
 interface StepIdentityProps {
   onNext: () => void;
@@ -259,11 +260,41 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
     }
   }, [discoveredProducts, discoveredServices, type]);
 
-  const handleNext = () => {
-    if (name && identity && productName) {
-      // All data is already synced to store via useEffect hooks
-      onNext();
-    }
+  const handleNext = async () => {
+    if (!name || !identity || !productName) return;
+    
+    // All data is already synced to store via useEffect hooks
+    // Trigger MCQ generation in background and move to next step immediately
+    // StepStrategy will show loading while MCQs are being generated
+    
+    const wizardData = {
+      inputs: wizardStore.getAllInputs(),
+      agentResponses: wizardStore.getAllAgentResponses(),
+      metadata: wizardStore.data.metadata,
+    };
+
+    // Start MCQ generation in background (don't await)
+    fetch("/api/agent/generate-mcqs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wizardData }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to generate MCQs");
+        }
+        return response.json();
+      })
+      .then(({ questions }) => {
+        // Store MCQs in wizard store when ready
+        wizardStore.setAgentResponse("mcqQuestions", questions);
+      })
+      .catch((error) => {
+        console.error("Error generating MCQs:", error);
+      });
+
+    // Move to next step immediately
+    onNext();
   };
 
   return (
@@ -324,14 +355,14 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
                     <div className="relative flex-1">
                       <Input
                         placeholder="https://..."
-                        className={`glass-input h-12 text-base rounded-2xl px-4 pr-12 transition-all duration-500 ${
-                          isAnalyzing ? 'ring-2 ring-blue-400/30 shadow-lg shadow-blue-500/10' : ''
+                        className={`glass-input h-12 text-base rounded-2xl px-4 transition-all duration-500 ${
+                          isAnalyzing ? 'ring-2 ring-blue-400/30 shadow-lg shadow-blue-500/10 pr-32' : 'pr-12'
                         }`}
                         value={url}
                         onChange={(e) => updateUrl(index, e.target.value)}
                         disabled={!!isAnalyzing}
                       />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6">
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
                         <AnimatePresence mode="wait">
                           {isAnalyzing && (
                             <motion.div
@@ -339,25 +370,20 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
                               initial={{ opacity: 0, scale: 0.8 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.8 }}
-                              className="absolute inset-0 flex items-center justify-center"
                             >
-                              <div className="relative w-5 h-5">
-                                <motion.div
-                                  className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500 opacity-20"
-                                  animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0, 0.2] }}
-                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                />
-                                <motion.div
-                                  className="absolute inset-0.5 rounded-full border-2 border-blue-500"
-                                  style={{ 
-                                    borderTopColor: 'transparent',
-                                    borderRightColor: 'rgb(147, 51, 234)',
-                                  }}
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                                />
-                                <div className="absolute inset-[6px] rounded-full bg-gradient-to-tr from-blue-400 to-purple-500" />
-                              </div>
+                              <RotatingLoader
+                                items={[
+                                  { text: "Analizando...", icon: Sparkles },
+                                  { text: "Extrayendo insights...", icon: Search },
+                                  { text: "Detectando colores...", icon: Palette },
+                                  { text: "Buscando productos...", icon: Package },
+                                ]}
+                                spinnerSize="sm"
+                                textSize="sm"
+                                interval={2000}
+                                showSpinner={false}
+                                className="text-slate-800"
+                              />
                             </motion.div>
                           )}
                           {!isAnalyzing && analysis && analysis.insights.length > 0 && (
@@ -366,7 +392,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
                               initial={{ opacity: 0, scale: 0 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0 }}
-                              className="absolute inset-0 flex items-center justify-center"
+                              className="flex items-center justify-center"
                             >
                               <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-green-400 to-emerald-500 shadow-lg shadow-green-500/30 flex items-center justify-center">
                                 <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

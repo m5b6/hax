@@ -27,7 +27,8 @@ function WizardContent() {
     wizardStore.setMetadata({
       currentStep: step,
     });
-  }, [step, wizardStore]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const businessName = wizardStore.getInput("name") || "";

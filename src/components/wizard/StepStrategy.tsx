@@ -1,66 +1,50 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Check, ArrowLeft, Target, Users, MessageSquare, Zap, TrendingUp, Heart, Globe, Lightbulb } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { ArrowRight, Sparkles, Check, ArrowLeft, Wand2, Search, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { RotatingLoaderFull } from "./RotatingLoaderFull";
 
-// Helper to get icon component
-const getIconForOption = (id: string) => {
-  switch (id) {
-    case "conversion": return TrendingUp;
-    case "awareness": return Globe;
-    case "loyalty": return Heart;
-    case "early_adopters": return Zap;
-    case "value_seekers": return Target;
-    case "luxury": return Sparkles;
-    case "bold": return Zap;
-    case "empathetic": return Heart;
-    case "educational": return Lightbulb;
-    default: return Check;
-  }
+interface StepStrategyProps {
+  onNext: () => void;
+}
+
+// Helper to get icon component by name from lucide-react
+const getIconByName = (iconName: string): React.ComponentType<any> => {
+  // @ts-ignore - dynamic icon access
+  const Icon = LucideIcons[iconName as keyof typeof LucideIcons] as ComponentType<any>;
+  return Icon || Check;
 };
 
-// Mock data simulating AI generated questions based on previous context
-const MOCK_AI_QUESTIONS = [
-  {
-    id: "focus",
-    question: "¿Cuál es el enfoque principal?",
-    reasoning: "Analizando tu marca, veo estas oportunidades estratégicas.",
-    options: [
-      { id: "conversion", text: "Venta directa / Conversión", description: "Maximizar ROAS inmediato y generar transacciones." },
-      { id: "awareness", text: "Reconocimiento de Marca", description: "Llegar a nuevas audiencias y aumentar la visibilidad." },
-      { id: "loyalty", text: "Fidelización", description: "Reactivar clientes actuales y fomentar recompra." }
-    ]
-  },
-  {
-    id: "audience_segment",
-    question: "¿A qué segmento atacaremos?",
-    reasoning: "Tus productos resuenan fuerte con estos grupos.",
-    options: [
-      { id: "early_adopters", text: "Early Adopters", description: "Innovadores que buscan lo nuevo y marcan tendencia." },
-      { id: "value_seekers", text: "Buscadores de Valor", description: "Clientes sensibles a la relación precio-calidad." },
-      { id: "luxury", text: "Premium / Lujo", description: "Buscan exclusividad, estatus y alta calidad." }
-    ]
-  },
-  {
-    id: "tone",
-    question: "¿Qué tono prefieres?",
-    reasoning: "Para diferenciarte, sugiero estos tonos de voz.",
-    options: [
-      { id: "bold", text: "Atrevido y desafiante", description: "Romper el molde, ser provocador y memorable." },
-      { id: "empathetic", text: "Empático y cercano", description: "Conectar emocionalmente y generar confianza." },
-      { id: "educational", text: "Educativo y experto", description: "Aportar valor y demostrar autoridad en el nicho." }
-    ]
-  }
-];
+// Helper to get icon component based on MCQ option IDs (fallback)
+const getIconForOption = (id: string): React.ComponentType<any> => {
+  // Visual Style icons
+  if (id === "moderno") return LucideIcons.Palette;
+  if (id === "natural") return LucideIcons.Heart;
+  if (id === "directo") return LucideIcons.Zap;
+  
+  // Visual Rhythm icons
+  if (id === "rapido") return LucideIcons.Zap;
+  if (id === "medio") return LucideIcons.Film;
+  if (id === "lento") return LucideIcons.Heart;
+  
+  // Human Presence icons
+  if (id === "alta") return LucideIcons.Users;
+  if (id === "media") return LucideIcons.Target;
+  if (id === "cero") return LucideIcons.Globe;
+  
+  return Check;
+};
 
 export const StepStrategy = ({ onNext }: StepStrategyProps) => {
   const wizardStore = useWizardStore();
-  const storedAnswers = wizardStore.getAgentResponse("strategyAnswers") || {};
+  const storedMCQAnswers = wizardStore.getAgentResponse("mcqAnswers") || {};
+  const storedMCQQuestions = wizardStore.getAgentResponse("mcqQuestions") || [];
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>(storedAnswers as Record<string, string>);
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
-  const [historyStack, setHistoryStack] = useState<{id: string, icon: any}[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>(storedMCQAnswers as Record<string, string>);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [historyStack, setHistoryStack] = useState<{id: string, icon: any, color: string}[]>([]);
   
   // Get previous data for display
   const previousData = {
@@ -69,24 +53,54 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
     productName: wizardStore.getInput("productName"),
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsAnalyzing(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Use stored MCQs or show loading/error state
+  const mcqQuestions = storedMCQQuestions.length > 0 ? storedMCQQuestions : null;
+  const currentQuestion = mcqQuestions?.[currentQuestionIndex];
+  const totalQuestions = mcqQuestions?.length || 0;
 
-  const currentQuestion = MOCK_AI_QUESTIONS[currentQuestionIndex];
-  const totalQuestions = MOCK_AI_QUESTIONS.length;
+  useEffect(() => {
+    // If MCQs are not loaded, trigger generation and show loading state
+    if (!mcqQuestions) {
+      setIsAnalyzing(true);
+      
+      const wizardData = {
+        inputs: wizardStore.getAllInputs(),
+        agentResponses: wizardStore.getAllAgentResponses(),
+        metadata: wizardStore.data.metadata,
+      };
+
+      fetch("/api/agent/generate-mcqs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wizardData }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to generate MCQs");
+          }
+          return response.json();
+        })
+        .then(({ questions }) => {
+          wizardStore.setAgentResponse("mcqQuestions", questions);
+          setIsAnalyzing(false);
+        })
+        .catch((error) => {
+          console.error("Error generating MCQs:", error);
+          setIsAnalyzing(false);
+        });
+    }
+  }, [mcqQuestions, wizardStore]);
   
-  const handleSelect = (optionId: string) => {
+  const handleSelect = (optionId: string, optionColor: string, optionIcon: string) => {
+    if (!currentQuestion) return;
+    
     const newAnswers = { ...answers, [currentQuestion.id]: optionId };
     setAnswers(newAnswers);
-    wizardStore.setAgentResponse("strategyAnswers", newAnswers);
+    wizardStore.setAgentResponse("mcqAnswers", newAnswers);
     
-    const Icon = getIconForOption(optionId);
+    const Icon = optionIcon ? getIconByName(optionIcon) : getIconForOption(optionId);
     const newStack = historyStack.filter((_, i) => i < currentQuestionIndex);
-    newStack.push({ id: optionId, icon: Icon });
+    newStack.push({ id: optionId, icon: Icon, color: optionColor });
     setHistoryStack(newStack);
     
     setTimeout(() => {
@@ -112,36 +126,18 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
     }
   };
 
-  if (isAnalyzing) {
+  if (isAnalyzing || !mcqQuestions || !currentQuestion) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 space-y-6 min-h-[300px]">
-        <div className="relative w-20 h-20 flex items-center justify-center">
-          <motion.div
-            className="absolute inset-0 rounded-full bg-blue-100 blur-xl opacity-50"
-            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="absolute inset-0 rounded-full border-2 border-blue-100"
-            style={{ borderTopColor: '#3B82F6', borderRightColor: '#8B5CF6' }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          />
-          <Sparkles className="w-8 h-8 text-blue-500 animate-pulse" />
-        </div>
-        <div className="text-center space-y-2">
-          <motion.p 
-            className="text-lg font-medium text-slate-900"
-            animate={{ opacity: [0.7, 1, 0.7] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          >
-            Analizando estrategia
-          </motion.p>
-          <p className="text-slate-500 text-sm max-w-xs mx-auto">
-            Conectando puntos clave de {previousData.name}
-          </p>
-        </div>
-      </div>
+      <RotatingLoaderFull
+        items={[
+          { text: "Cargando preguntas", icon: Search },
+          { text: "Generando opciones", icon: Wand2 },
+          { text: "Personalizando contenido", icon: Sparkles },
+          { text: "Analizando tu negocio", icon: Zap },
+        ]}
+        title="Preparando tu estrategia"
+        subtitle={previousData.name ? `Personalizando para ${previousData.name}` : "Analizando tu negocio..."}
+      />
     );
   }
 
@@ -169,11 +165,16 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
                     {historyStack.map((item, idx) => (
                         <motion.div
                             key={idx}
-                            initial={{ opacity: 0, scale: 0, x: 10 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            className="w-8 h-8 rounded-full bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-600 z-10"
+                            initial={{ opacity: 0, scale: 0, x: 10, rotate: -180 }}
+                            animate={{ opacity: 1, scale: 1, x: 0, rotate: 0 }}
+                            exit={{ opacity: 0, scale: 0, x: -10 }}
+                            className="w-9 h-9 rounded-full shadow-md flex items-center justify-center z-10 border-2"
+                            style={{
+                              backgroundColor: item.color || "#3B82F6",
+                              borderColor: item.color || "#3B82F6",
+                            }}
                         >
-                            <item.icon className="w-3.5 h-3.5" />
+                            <item.icon className="w-4 h-4 text-white" />
                         </motion.div>
                     ))}
                 </AnimatePresence>
@@ -190,57 +191,152 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
           className="space-y-6"
         >
           <div className="space-y-3">
-            <h2 className="text-2xl font-semibold text-slate-900 tracking-tight">
+            <h2 className="text-2xl font-semibold text-slate-900 tracking-tight font-instrument-sans">
               {currentQuestion.question}
             </h2>
             
-            <div className="flex items-start gap-2 text-slate-500 text-sm leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100/50">
+            {/* Show description from first option's whyItWorks as insight if available */}
+            {currentQuestion.options?.[0]?.whyItWorks && (
+              <div className="flex items-start gap-2 text-slate-500 text-sm leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100/50">
                 <Sparkles className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                <p><span className="font-medium text-slate-700">Insight:</span> {currentQuestion.reasoning}</p>
-            </div>
+                <p><span className="font-medium text-slate-700">Contexto:</span> Estas opciones están personalizadas para tu negocio.</p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
             {currentQuestion.options.map((option) => {
               const isSelected = answers[currentQuestion.id] === option.id;
-              const OptionIcon = getIconForOption(option.id);
+              const OptionIcon = option.icon ? getIconByName(option.icon) : getIconForOption(option.id);
+              const optionColor = option.color || "#3B82F6";
+              
+              // Convert hex to RGB for opacity
+              const hexToRgb = (hex: string) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                  r: parseInt(result[1], 16),
+                  g: parseInt(result[2], 16),
+                  b: parseInt(result[3], 16)
+                } : { r: 59, g: 130, b: 246 };
+              };
+              
+              const rgb = hexToRgb(optionColor);
+              const bgColorOpaque = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.06)`;
+              const bgColorFull = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
+              const borderColorOpaque = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+              const borderColorFull = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
               
               return (
                 <motion.button
                   key={option.id}
-                  onClick={() => handleSelect(option.id)}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelect(option.id, optionColor, option.icon)}
+                  whileHover={{ scale: 1.005, y: -1 }}
+                  whileTap={{ scale: 0.995 }}
                   className={`
-                    w-full p-4 rounded-2xl border text-left transition-all duration-200 group relative
-                    ${isSelected 
-                        ? "bg-blue-50/80 border-blue-500/30 shadow-sm" 
-                        : "bg-white border-slate-200/60 hover:border-blue-200 hover:bg-slate-50/50 hover:shadow-sm"
-                    }
+                    w-full p-4 rounded-xl text-left transition-all duration-300 group relative overflow-hidden
+                    backdrop-blur-sm
+                    ${isSelected ? "" : ""}
                   `}
+                  style={{
+                    backgroundColor: isSelected ? bgColorFull : bgColorOpaque,
+                    border: `1px solid ${isSelected ? borderColorFull : borderColorOpaque}`,
+                    boxShadow: isSelected 
+                      ? `
+                        0 1px 2px rgba(0, 0, 0, 0.04),
+                        0 2px 4px rgba(0, 0, 0, 0.02),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                        inset 0 -1px 0 rgba(0, 0, 0, 0.02),
+                        0 0 0 1px ${borderColorFull}
+                      `
+                      : `
+                        0 1px 1px rgba(0, 0, 0, 0.02),
+                        0 2px 4px rgba(0, 0, 0, 0.01),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+                        inset 0 -1px 0 rgba(0, 0, 0, 0.01)
+                      `,
+                  }}
                 >
-                    <div className="flex items-start gap-4">
-                        <div className={`
-                            w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors
-                            ${isSelected ? "bg-blue-500 text-white shadow-blue-500/20 shadow-lg" : "bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-blue-500 group-hover:shadow-sm"}
-                        `}>
+                    {/* Bevel highlight top */}
+                    <div 
+                      className="absolute inset-x-0 top-0 h-[1px] opacity-60 transition-opacity duration-300"
+                      style={{
+                        background: `linear-gradient(90deg, transparent, ${optionColor}40, transparent)`,
+                        opacity: isSelected ? 0.8 : 0.4,
+                      }}
+                    />
+                    
+                    {/* Subtle color glow on hover/select */}
+                    <div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{
+                        background: `radial-gradient(circle at center, ${optionColor}08 0%, transparent 70%)`
+                      }}
+                    />
+                    
+                    <div className="relative flex items-start gap-3.5">
+                        <div 
+                          className={`
+                            w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300
+                            ${isSelected ? "scale-105" : "group-hover:scale-105"}
+                          `}
+                          style={{
+                            backgroundColor: isSelected ? optionColor : `${optionColor}15`,
+                            color: isSelected ? "white" : optionColor,
+                            boxShadow: isSelected
+                              ? `
+                                0 2px 4px ${optionColor}30,
+                                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                                inset 0 -1px 0 rgba(0, 0, 0, 0.1)
+                              `
+                              : `
+                                0 1px 2px rgba(0, 0, 0, 0.05),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.5),
+                                inset 0 -1px 0 rgba(0, 0, 0, 0.05)
+                              `,
+                          }}
+                        >
                             <OptionIcon className="w-5 h-5" />
                         </div>
                         
-                        <div className="flex-1 min-w-0">
-                            <div className={`font-medium text-base mb-0.5 ${isSelected ? 'text-blue-900' : 'text-slate-900'}`}>
+                        <div className="flex-1 min-w-0 space-y-1">
+                            <div 
+                              className="font-bold text-base leading-tight"
+                              style={{ 
+                                color: isSelected ? optionColor : "#0F172A",
+                                fontFamily: 'var(--font-instrument-serif), serif'
+                              }}
+                            >
                                 {option.text}
                             </div>
-                            <div className={`text-sm leading-snug ${isSelected ? 'text-blue-700/80' : 'text-slate-500'}`}>
+                            <div className={`text-sm leading-snug ${isSelected ? 'text-slate-700' : 'text-slate-600'}`}>
                                 {option.description}
                             </div>
+                            {option.whyItWorks && (
+                              <div 
+                                className="text-xs leading-relaxed mt-2 pt-2 border-t font-medium"
+                                style={{
+                                  borderColor: isSelected ? `${optionColor}30` : "#E2E8F0",
+                                  color: isSelected ? `${optionColor}CC` : "#64748B"
+                                }}
+                              >
+                                <span className="font-semibold">{option.sensation}</span> • {option.whyItWorks}
+                              </div>
+                            )}
                         </div>
 
                         {isSelected && (
                             <motion.div 
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center shrink-0 mt-1"
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                                style={{ 
+                                  backgroundColor: optionColor,
+                                  boxShadow: `
+                                    0 2px 4px ${optionColor}40,
+                                    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                                    inset 0 -1px 0 rgba(0, 0, 0, 0.1)
+                                  `
+                                }}
                             >
                                 <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
                             </motion.div>

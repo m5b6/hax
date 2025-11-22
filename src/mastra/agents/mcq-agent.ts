@@ -10,6 +10,8 @@ const mcqOptionSchema = z.object({
   usefulFor: z.string().describe("Para qué tipo de negocios es útil"),
   howItLooks: z.string().describe("Cómo se ve visualmente"),
   whyItWorks: z.string().describe("Por qué funciona para este negocio específico"),
+  color: z.string().describe("Color hexadecimal para la tarjeta (ej: '#3B82F6', '#10B981', '#F59E0B'). Debe ser distintivo y representar la personalidad de la opción. Moderno: azules/grises, Natural: verdes/cálidos, Directo: naranjas/amarillos vibrantes, Rápido: rojos/naranjas energéticos, Medio: azules/púrpuras balanceados, Lento: verdes/azules suaves, Alta presencia: rosas/corales cálidos, Media: azules/verdes equilibrados, Cero: grises/azules minimalistas"),
+  icon: z.string().describe("Nombre del icono de lucide-react (ej: 'Palette', 'Heart', 'Zap', 'Film', 'Users', 'Globe'). Debe representar visualmente la opción"),
 });
 
 const mcqSchema = z.object({
@@ -96,11 +98,23 @@ INSTRUCCIONES CRÍTICAS:
 6. Si detectaste colores de marca, menciona cómo se relacionan con cada estilo
 7. Si hay productos/servicios concretos, úsalos como ejemplos en las descripciones
 
+COLORES Y ICONOS POR OPCIÓN:
+- **Moderno**: Color azul/gris profesional (#3B82F6, #6366F1, #475569), icono 'Palette' o 'Layers'
+- **Natural**: Color verde/coral cálido (#10B981, #F97316, #EC4899), icono 'Heart' o 'Leaf'
+- **Directo**: Color naranja/amarillo vibrante (#F59E0B, #EF4444, #F97316), icono 'Zap' o 'Target'
+- **Rápido**: Color rojo/naranja energético (#EF4444, #F97316, #DC2626), icono 'Zap' o 'Bolt'
+- **Medio**: Color azul/púrpura balanceado (#6366F1, #8B5CF6, #3B82F6), icono 'Film' o 'Play'
+- **Lento**: Color verde/azul suave (#10B981, #06B6D4, #14B8A6), icono 'Heart' o 'Wind'
+- **Alta presencia**: Color rosa/coral cálido (#EC4899, #F97316, #F43F5E), icono 'Users' o 'UserPlus'
+- **Media presencia**: Color azul/verde equilibrado (#3B82F6, #10B981, #6366F1), icono 'Target' o 'Users'
+- **Cero presencia**: Color gris/azul minimalista (#64748B, #475569, #334155), icono 'Globe' o 'Box'
+
 FORMATO DE RESPUESTA:
 - Devuelve SOLO el objeto JSON estructurado según el schema
 - Las preguntas deben estar en español
 - Cada opción debe ser rica en contexto y específica para el negocio
-- Los IDs deben ser: 'moderno', 'natural', 'directo' para pregunta 1; 'rapido', 'medio', 'lento' para pregunta 2; 'alta', 'media', 'cero' para pregunta 3`,
-  model: openai("gpt-4o"),
+- Los IDs deben ser: 'moderno', 'natural', 'directo' para pregunta 1; 'rapido', 'medio', 'lento' para pregunta 2; 'alta', 'media', 'cero' para pregunta 3
+- Cada opción DEBE incluir un color hexadecimal distintivo y un icono de lucide-react válido`,
+  model: openai("gpt-4.1-mini"),
 });
 
