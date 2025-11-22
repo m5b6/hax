@@ -93,6 +93,7 @@ Usa toda esta información para hacer las preguntas y opciones específicas y re
 
     const result = await agent.generate(prompt, {
       output: mcqsResponseSchema,
+      temperature: 0.9,
     });
 
     const parsedOutput = typeof result.text === 'string' 

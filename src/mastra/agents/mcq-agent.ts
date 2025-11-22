@@ -4,14 +4,14 @@ import { z } from "zod";
 
 const mcqOptionSchema = z.object({
   id: z.string().describe("ID único de la opción (ej: 'moderno', 'natural', 'directo', 'rapido', 'medio', 'lento', 'alta', 'media', 'cero')"),
-  text: z.string().describe("Título corto de la opción (ej: 'Moderno', 'Natural', 'Directo')"),
+  text: z.string().max(15).describe("Título MUY CORTO y punchy de la opción (máximo 15 caracteres, ej: 'Moderno', 'Natural', 'Directo', 'Rápido', 'Equilibrado'). Debe ser impactante, memorable y directo. Evita palabras largas o descriptivas."),
   description: z.string().describe("Descripción contextualizada basada en el negocio del usuario"),
   sensation: z.string().describe("Sensación que transmite esta opción"),
   usefulFor: z.string().describe("Para qué tipo de negocios es útil"),
   howItLooks: z.string().describe("Cómo se ve visualmente"),
   whyItWorks: z.string().describe("Por qué funciona para este negocio específico"),
-  color: z.string().describe("Color hexadecimal para la tarjeta (ej: '#3B82F6', '#10B981', '#F59E0B'). Debe ser distintivo y representar la personalidad de la opción. Moderno: azules/grises, Natural: verdes/cálidos, Directo: naranjas/amarillos vibrantes, Rápido: rojos/naranjas energéticos, Medio: azules/púrpuras balanceados, Lento: verdes/azules suaves, Alta presencia: rosas/corales cálidos, Media: azules/verdes equilibrados, Cero: grises/azules minimalistas"),
-  icon: z.string().describe("Nombre del icono de lucide-react (ej: 'Palette', 'Heart', 'Zap', 'Film', 'Users', 'Globe'). Debe representar visualmente la opción"),
+  color: z.string().describe("Color hexadecimal VIBRANTE y distintivo para la tarjeta. Sé CREATIVO y BOLD con los colores. Usa colores poppy, saturados y memorables. No te limites a colores básicos - experimenta con tonos únicos que reflejen la personalidad de la opción. Ejemplos inspiradores: '#FF6B9D' (rosa vibrante), '#00D9FF' (cian eléctrico), '#FFB800' (amarillo dorado), '#C44569' (magenta profundo), '#00F5A0' (verde neón), '#8B5CF6' (púrpura intenso). El color debe ser distintivo y hacer que la opción se destaque visualmente."),
+  icon: z.string().describe("Nombre del icono de lucide-react. Sé CREATIVO y elige iconos que realmente representen la esencia de la opción. No te limites a los obvios - piensa en iconos que transmitan la sensación y personalidad única de cada opción."),
 });
 
 const mcqSchema = z.object({
@@ -89,32 +89,39 @@ LAS 3 PREGUNTAS OBLIGATORIAS:
      Útil para: branding moderno, espacios, máquinas, productos, ambientes, gimnasios boutique, clínicas premium
      Cómo se ve: Solo objetos, espacios, herramientas, máquinas o ambiente, tomas geométricas y pulidas, nada de personas
 
+LIBERTAD CREATIVA Y ESTILO:
+- **SÉ CREATIVO Y BOLD**: No te limites a opciones genéricas. Piensa fuera de la caja y crea opciones que realmente resuenen con el negocio específico del usuario.
+- **COLORES POPPY Y MEMORABLES**: Usa colores vibrantes, saturados y distintivos. Evita colores aburridos o genéricos. Cada color debe tener personalidad y hacer que la opción se destaque.
+- **HEADERS ULTRA-CORTOS**: Los títulos deben ser MÁXIMO 15 caracteres, preferiblemente 1-2 palabras. Piensa en palabras punchy, impactantes y memorables. Ejemplos: "Rápido", "Suave", "Bold", "Premium", "Cálido", "Fresco".
+- **ICONOS CREATIVOS**: Elige iconos que realmente capturen la esencia única de cada opción. No uses siempre los mismos iconos obvios - piensa en qué icono mejor representa la personalidad de esa opción específica para este negocio.
+
 INSTRUCCIONES CRÍTICAS:
-1. **Contextualiza cada opción** según el negocio específico del usuario
+1. **Contextualiza cada opción** según el negocio específico del usuario - adapta nombres, colores e iconos al contexto
 2. En "whyItWorks", explica POR QUÉ esa opción funciona para SU negocio en particular
 3. En "description", adapta el mensaje típico al contexto del negocio
 4. En "usefulFor", menciona si su tipo de negocio encaja en esa categoría
 5. Usa la información de las URLs analizadas para hacer las opciones más específicas
-6. Si detectaste colores de marca, menciona cómo se relacionan con cada estilo
+6. Si detectaste colores de marca, puedes inspirarte en ellos pero SÉ CREATIVO - no los copies directamente, úsalos como inspiración para crear colores únicos
 7. Si hay productos/servicios concretos, úsalos como ejemplos en las descripciones
 
-COLORES Y ICONOS POR OPCIÓN:
-- **Moderno**: Color azul/gris profesional (#3B82F6, #6366F1, #475569), icono 'Palette' o 'Layers'
-- **Natural**: Color verde/coral cálido (#10B981, #F97316, #EC4899), icono 'Heart' o 'Leaf'
-- **Directo**: Color naranja/amarillo vibrante (#F59E0B, #EF4444, #F97316), icono 'Zap' o 'Target'
-- **Rápido**: Color rojo/naranja energético (#EF4444, #F97316, #DC2626), icono 'Zap' o 'Bolt'
-- **Medio**: Color azul/púrpura balanceado (#6366F1, #8B5CF6, #3B82F6), icono 'Film' o 'Play'
-- **Lento**: Color verde/azul suave (#10B981, #06B6D4, #14B8A6), icono 'Heart' o 'Wind'
-- **Alta presencia**: Color rosa/coral cálido (#EC4899, #F97316, #F43F5E), icono 'Users' o 'UserPlus'
-- **Media presencia**: Color azul/verde equilibrado (#3B82F6, #10B981, #6366F1), icono 'Target' o 'Users'
-- **Cero presencia**: Color gris/azul minimalista (#64748B, #475569, #334155), icono 'Globe' o 'Box'
+GUÍAS DE INSPIRACIÓN (NO RESTRICCIONES):
+- **Estilo Moderno/Digital**: Colores como azules eléctricos, cianes brillantes, púrpuras modernos. Iconos como Sparkles, Zap, Layers, Rocket
+- **Estilo Natural/Humano**: Colores como rosas cálidos, corales vibrantes, verdes frescos. Iconos como Heart, Leaf, Sun, Flower
+- **Estilo Directo/Performance**: Colores como naranjas intensos, amarillos dorados, rojos energéticos. Iconos como Target, Zap, Flame, TrendingUp
+- **Ritmo Rápido**: Colores como rojos vibrantes, naranjas eléctricos, magentas intensos. Iconos como Bolt, Zap, Rocket, Flame
+- **Ritmo Medio**: Colores como azules balanceados, púrpuras suaves, verdes equilibrados. Iconos como Film, Play, Circle, Square
+- **Ritmo Lento**: Colores como verdes suaves, azules tranquilos, lavandas relajantes. Iconos como Wind, Waves, Cloud, Moon
+- **Alta Presencia Humana**: Colores como rosas vibrantes, corales cálidos, magentas suaves. Iconos como Users, UserPlus, Smile, HandHeart
+- **Media Presencia**: Colores como azules equilibrados, verdes balanceados, púrpuras suaves. Iconos como Target, Users, Eye, Focus
+- **Cero Presencia**: Colores como grises sofisticados, azules minimalistas, platas modernos. Iconos como Box, Globe, Grid, Layout
 
 FORMATO DE RESPUESTA:
 - Devuelve SOLO el objeto JSON estructurado según el schema
 - Las preguntas deben estar en español
 - Cada opción debe ser rica en contexto y específica para el negocio
 - Los IDs deben ser: 'moderno', 'natural', 'directo' para pregunta 1; 'rapido', 'medio', 'lento' para pregunta 2; 'alta', 'media', 'cero' para pregunta 3
-- Cada opción DEBE incluir un color hexadecimal distintivo y un icono de lucide-react válido`,
-  model: openai("gpt-4.1-mini"),
+- Cada opción DEBE incluir un color hexadecimal VIBRANTE y CREATIVO y un icono de lucide-react válido
+- Los títulos (text) deben ser MÁXIMO 15 caracteres - sé punchy y memorable`,
+  model: openai("gpt-4o"),
 });
 

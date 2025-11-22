@@ -220,6 +220,15 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
                 } : { r: 59, g: 130, b: 246 };
               };
               
+              // Helper to darken a color
+              const darkenColor = (hex: string, amount: number): string => {
+                const rgb = hexToRgb(hex);
+                const r = Math.max(0, Math.floor(rgb.r * (1 - amount)));
+                const g = Math.max(0, Math.floor(rgb.g * (1 - amount)));
+                const b = Math.max(0, Math.floor(rgb.b * (1 - amount)));
+                return `rgb(${r}, ${g}, ${b})`;
+              };
+              
               const rgb = hexToRgb(optionColor);
               const bgColorOpaque = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.06)`;
               const bgColorFull = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
@@ -302,7 +311,7 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
                             <div 
                               className="font-bold text-base leading-tight"
                               style={{ 
-                                color: isSelected ? optionColor : "#0F172A",
+                                color: isSelected ? darkenColor(optionColor, 0.3) : darkenColor(optionColor, 0.5),
                                 fontFamily: 'var(--font-instrument-serif), serif'
                               }}
                             >
