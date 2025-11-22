@@ -27,14 +27,21 @@ export async function POST(req: Request) {
     try {
       const agent = mastra.getAgent("campaignVisualizerAgent"); // Reusing an existing agent for text gen
       if (agent) {
-        const audioPrompt = `Genera un guion de voz en off MUY CORTO (máximo 2 frases) y ENGANCHADOR en ESPAÑOL para este video. 
-                Debe sonar natural, profesional y coherente con la descripción visual.
-                No uses hashtags ni emojis. Solo el texto plano para el locutor.
+        const audioPrompt = `Escribe un guion de voz en off MUY BREVE (1 frase) para un video comercial.
+                Debe ser inspirador y profesional.
                 
-                Descripción del video: "${promptText.substring(0, 500)}..."`;
+                Contexto visual: "${promptText.substring(0, 300)}..."
+                
+                Solo devuelve el texto del guion. Nada más.`;
 
         const result = await agent.generate(audioPrompt);
         audioScript = result.text.replace(/["']/g, "").trim();
+
+        // If agent refuses, just don't use audio
+        if (audioScript.toLowerCase().includes("lo siento") || audioScript.toLowerCase().includes("no puedo")) {
+          audioScript = "";
+        }
+
         console.log("📝 Audio Script:", audioScript);
       }
     } catch (e) {
@@ -73,11 +80,9 @@ export async function POST(req: Request) {
 
       if (imageUrl) {
         console.log("Adding reference image to textToVideo request:", imageUrl);
-        // Veo 3.1 supports [ { uri: "..." } ]
         params.promptImage = [{ uri: imageUrl }];
 
-        // Add image strength - Lowered to 0.2 to prioritize script adherence
-        params.imageDescriptionStrength = 0.2;
+        params.imageDescriptionStrength = 0.3;
       }
 
       const videoTask = await runwayClient.textToVideo.create(params).waitForTaskOutput();
