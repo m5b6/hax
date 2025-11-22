@@ -158,6 +158,6 @@ FORMATO DE RESPUESTA:
 - Los IDs deben ser: 'moderno', 'natural', 'directo' para pregunta 1; 'rapido', 'medio', 'lento' para pregunta 2; 'alta', 'media', 'cero' para pregunta 3
 - Cada opción DEBE incluir un color hexadecimal VIBRANTE y CREATIVO y un icono de lucide-react válido
 - Los títulos (text) deben ser MÁXIMO 15 caracteres - sé punchy y memorable`,
-  model: openai("gpt-4.1"),
+  model: openai("gpt-4.1-nano"),
 });
 
