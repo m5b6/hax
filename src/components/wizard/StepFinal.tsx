@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Instagram } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -37,13 +37,15 @@ const getIconByName = (iconName: string): LucideIcon => {
 interface GeneratedPost {
   id: number;
   description: string;
+  caption: string;
   imageUrl?: string;
   imageError?: string;
 }
 
 export const StepFinal = () => {
   const wizardStore = useWizardStore();
-  const { brandLogoUrl } = useBrand();
+  const { brandLogoUrl, brandColors } = useBrand();
+  const brandName = wizardStore.getInput("name") || "";
   
   // Get all data from store
   const data = {
@@ -247,11 +249,46 @@ export const StepFinal = () => {
     }
   }, [streamedPrompt]);
 
-  // Generate posts effect
+  const generatePosts = async () => {
+    setIsGeneratingPosts(true);
+    setPostGenerationError(null);
+    setGeneratedPosts([]);
+    setCurrentSlide(0);
+
+    const wizardData = {
+      inputs: wizardStore.getAllInputs(),
+      agentResponses: wizardStore.getAllAgentResponses(),
+      metadata: wizardStore.data.metadata,
+    };
+
+    try {
+      const response = await fetch("/api/workflow/post-generation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(wizardData),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate posts");
+      
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.posts)) {
+        setGeneratedPosts(result.posts);
+        wizardStore.setAgentResponse("generatedPosts", result.posts);
+      } else {
+          throw new Error(result.error || "Failed to generate posts");
+      }
+    } catch (error: any) {
+      console.error("Error generating posts:", error);
+      setPostGenerationError(error.message);
+    } finally {
+      setIsGeneratingPosts(false);
+    }
+  };
+
   useEffect(() => {
     if (hasGeneratedPostsRef.current) return;
     
-    // Check if we already have posts in store
     const existingPosts = wizardStore.getAgentResponse("generatedPosts");
     if (existingPosts) {
       setGeneratedPosts(existingPosts);
@@ -259,42 +296,6 @@ export const StepFinal = () => {
     }
 
     hasGeneratedPostsRef.current = true;
-    setIsGeneratingPosts(true);
-
-    const generatePosts = async () => {
-      const wizardData = {
-        inputs: wizardStore.getAllInputs(),
-        agentResponses: wizardStore.getAllAgentResponses(),
-        metadata: wizardStore.data.metadata,
-      };
-
-      try {
-        const response = await fetch("/api/workflow/post-generation", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(wizardData),
-        });
-
-        if (!response.ok) throw new Error("Failed to generate posts");
-        
-        const result = await response.json();
-        
-        if (result.success && Array.isArray(result.posts)) {
-          setGeneratedPosts(result.posts);
-          // Store in wizard store manually since it's a custom key
-          // @ts-ignore
-          wizardStore.setAgentResponse("generatedPosts", result.posts);
-        } else {
-            throw new Error(result.error || "Failed to generate posts");
-        }
-      } catch (error: any) {
-        console.error("Error generating posts:", error);
-        setPostGenerationError(error.message);
-      } finally {
-        setIsGeneratingPosts(false);
-      }
-    };
-
     generatePosts();
   }, [wizardStore]);
 
@@ -557,28 +558,50 @@ export const StepFinal = () => {
                     )}
                     <span>Contenido Generado</span>
                 </div>
-                {videoResult && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
-                        <Share2 className="w-3 h-3 text-slate-400" />
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    {!isGeneratingPosts && generatedPosts.length > 0 && (
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95" 
+                            onClick={generatePosts}
+                        >
+                            <RefreshCw className="w-3 h-3" />
+                        </Button>
+                    )}
+                    {videoResult && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
+                            <Share2 className="w-3 h-3 text-slate-400" />
+                        </Button>
+                    )}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {isGeneratingPosts ? (
-                <div className="flex items-center justify-center py-12">
-                  <RotatingLoader
-                    items={[
-                      { text: "Redactando anuncios", icon: FileText },
-                      { text: "Diseñando imágenes", icon: ImageIcon },
-                      { text: "Optimizando para redes", icon: Share2 },
-                    ]}
-                    spinnerSize="sm"
-                    textSize="sm"
-                    interval={2000}
-                    showSpinner={false}
-                    className="text-slate-500"
-                  />
+                <div className="relative w-full bg-slate-50/50 group">
+                  <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
+                    <div className="flex gap-6 w-full px-6 justify-center">
+                      {[0, 1, 2].map((idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: idx * 0.1, duration: 0.3 }}
+                          className="flex flex-col items-center gap-6 flex-1 max-w-[240px]"
+                        >
+                          <div className="relative aspect-square w-full max-w-[360px] rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 animate-pulse">
+                            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/30 to-transparent" />
+                          </div>
+                          <div className="w-full space-y-2 px-4">
+                            <div className="h-3 bg-slate-200 rounded-full animate-pulse" />
+                            <div className="h-3 bg-slate-200 rounded-full animate-pulse w-4/5 mx-auto" />
+                            <div className="h-3 bg-slate-200 rounded-full animate-pulse w-3/5 mx-auto" />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : generatedPosts.length > 0 ? (
                  <div className="relative w-full bg-slate-50/50 group">
@@ -592,22 +615,124 @@ export const StepFinal = () => {
                                 transition={{ duration: 0.3 }}
                                 className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
                             >
-                                <div className="relative aspect-[9/16] h-[360px] rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-white">
+                                <div className="relative aspect-square w-full max-w-[400px] rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-white">
                                     {generatedPosts[currentSlide].imageUrl ? (
-                                        <img 
-                                            src={generatedPosts[currentSlide].imageUrl} 
-                                            alt={`Generated post ${currentSlide + 1}`}
-                                            className="w-full h-full object-cover"
-                                        />
+                                        <>
+                                            <div className="absolute top-0 left-0 right-0 h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100">
+                                                {brandLogoUrl && (
+                                                    <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                                                        style={{
+                                                            background: brandColors.length > 0 
+                                                                ? `linear-gradient(135deg, ${brandColors[0] || '#40C9FF'}, ${brandColors[1] || brandColors[0] || '#E81CFF'})`
+                                                                : 'linear-gradient(135deg, #40C9FF, #E81CFF)',
+                                                            padding: '2px'
+                                                        }}
+                                                    >
+                                                        <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                                                            {brandLogoUrl.trim().startsWith("<svg") ? (
+                                                                <div
+                                                                    className="w-[70%] h-[70%] text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
+                                                                    dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
+                                                                />
+                                                            ) : (
+                                                                <img
+                                                                    src={brandLogoUrl}
+                                                                    alt="Logo"
+                                                                    className="w-[70%] h-[70%] object-contain"
+                                                                    referrerPolicy="no-referrer"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <span className="text-sm font-semibold text-slate-900 truncate">
+                                                    {brandName || "Marca"}
+                                                </span>
+                                            </div>
+                                            <div className="absolute top-12 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
+                                                <div className="text-sm font-semibold text-slate-900 mb-1">
+                                                    {brandName || "Marca"}
+                                                </div>
+                                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
+                                                    {(() => {
+                                                        let caption = generatedPosts[currentSlide].caption;
+                                                        
+                                                        if (!caption) {
+                                                            return generatedPosts[currentSlide].description || '';
+                                                        }
+                                                        
+                                                        if (typeof caption !== 'string') {
+                                                            caption = String(caption);
+                                                        }
+                                                        
+                                                        if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+                                                            try {
+                                                                const parsed = JSON.parse(caption);
+                                                                caption = parsed.caption || parsed.description || caption;
+                                                            } catch {
+                                                                caption = caption;
+                                                            }
+                                                        }
+                                                        
+                                                        if (typeof caption !== 'string') {
+                                                            caption = String(caption);
+                                                        }
+                                                        
+                                                        return caption.length > 150 
+                                                            ? caption.substring(0, 150) + '...' 
+                                                            : caption;
+                                                    })()}
+                                                </p>
+                                            </div>
+                                            <div className="absolute top-12 bottom-[100px] left-0 right-0 z-0">
+                                                <img 
+                                                    src={generatedPosts[currentSlide].imageUrl} 
+                                                    alt={`Generated post ${currentSlide + 1}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <div className="absolute bottom-0 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
+                                                <div className="text-sm font-semibold text-slate-900 mb-1">
+                                                    {brandName || "Marca"}
+                                                </div>
+                                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
+                                                    {(() => {
+                                                        let caption = generatedPosts[currentSlide].caption;
+                                                        
+                                                        if (!caption) {
+                                                            return generatedPosts[currentSlide].description || '';
+                                                        }
+                                                        
+                                                        if (typeof caption !== 'string') {
+                                                            caption = String(caption);
+                                                        }
+                                                        
+                                                        if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+                                                            try {
+                                                                const parsed = JSON.parse(caption);
+                                                                caption = parsed.caption || parsed.description || caption;
+                                                            } catch {
+                                                                caption = caption;
+                                                            }
+                                                        }
+                                                        
+                                                        if (typeof caption !== 'string') {
+                                                            caption = String(caption);
+                                                        }
+                                                        
+                                                        return caption.length > 150 
+                                                            ? caption.substring(0, 150) + '...' 
+                                                            : caption;
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        </>
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
                                             <ImageIcon className="w-12 h-12 opacity-20" />
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-sm text-slate-600 text-center max-w-md line-clamp-3 px-4">
-                                    {generatedPosts[currentSlide].description}
-                                </p>
                             </motion.div>
                         </AnimatePresence>
                         

@@ -61,6 +61,9 @@ interface WizardStoreInput {
             logoUrl?: string;
             images?: string[];
             summary?: string;
+            colors?: string[];
+            primaryColor?: string;
+            secondaryColor?: string;
             [key: string]: any;
         }>;
         selectionStack?: Array<{
@@ -88,6 +91,7 @@ interface PostGenerationResult {
     posts: Array<{
         id: number;
         description: string;
+        caption: string;
         imageUrl?: string;
         imageError?: string;
     }>;
@@ -98,37 +102,186 @@ export async function POST(req: Request) {
     try {
         const wizardData: WizardStoreInput = await req.json();
 
-        // Step 1: Extract relevant information for the campaign visualizer
         const brandName = wizardData.inputs.name;
         const brandIdentity = wizardData.inputs.identity;
         const productName = wizardData.inputs.productName;
-        const logoUrl = wizardData.agentResponses.urlAnalyses[0]?.logoUrl;
-        const images = wizardData.agentResponses.urlAnalyses[0]?.images || [];
-        const summary = wizardData.agentResponses.urlAnalyses[0]?.summary;
-        const visualStyle = wizardData.agentResponses.mcqAnswers?.["visual-style"];
-        const visualRhythm = wizardData.agentResponses.mcqAnswers?.["visual-rhythm"];
-        const humanPresence = wizardData.agentResponses.mcqAnswers?.["human-presence"];
+        const productType = wizardData.inputs.type;
+        const urlAnalysis = wizardData.agentResponses.urlAnalyses?.[0];
+        const logoUrl = urlAnalysis?.logoUrl;
+        const images = urlAnalysis?.images || [];
+        const summary = urlAnalysis?.summary;
+        const brandColors = urlAnalysis?.colors || [];
+        const primaryColor = urlAnalysis?.primaryColor;
+        const secondaryColor = urlAnalysis?.secondaryColor;
+        const mcqAnswers = wizardData.agentResponses.mcqAnswers || {};
+        const mcqQuestions = wizardData.agentResponses.mcqQuestions || [];
+        const selectionStack = wizardData.agentResponses.selectionStack || [];
 
-        // Create the campaign prompt
+        const visualStyleId = mcqAnswers["visual-style"];
+        const visualRhythmId = mcqAnswers["visual-rhythm"];
+        const humanPresenceId = mcqAnswers["human-presence"];
+
+        const getMcqOptionDetails = (questionId: string, optionId: string | undefined) => {
+            if (!optionId) return null;
+            const question = mcqQuestions.find((q: any) => q.id === questionId);
+            if (!question) return null;
+            const option = question.options?.find((opt: any) => opt.id === optionId);
+            return option || null;
+        };
+
+        const visualStyleOption = getMcqOptionDetails("visual-style", visualStyleId);
+        const visualRhythmOption = getMcqOptionDetails("visual-rhythm", visualRhythmId);
+        const humanPresenceOption = getMcqOptionDetails("human-presence", humanPresenceId);
+
+        const allBrandColors = [
+            primaryColor,
+            secondaryColor,
+            ...brandColors
+        ].filter((color): color is string => Boolean(color) && typeof color === 'string');
+
+        const colorPalette = allBrandColors.length > 0 
+            ? allBrandColors.slice(0, 5).join(', ')
+            : 'No brand colors detected';
+
+        const selectionStackContext = selectionStack
+            .filter(item => item.id !== 'brand-logo' && item.id !== 'first-pick')
+            .map(item => `${item.text} (${item.color})`)
+            .join(', ');
+
         const campaignPrompt = `
-Brand: ${brandName}
-Identity: ${brandIdentity}
-Product/Service: ${productName}
+🎨 BRIEF DE MARCA - GENERACIÓN DE CONTENIDO INSTAGRAM POSTS
 
-Summary: ${summary}
+═══════════════════════════════════════════════════════════
+📌 IDENTIDAD DE MARCA
+═══════════════════════════════════════════════════════════
 
-Visual Style Selected: ${visualStyle}
-Visual Rhythm Selected: ${visualRhythm}
-Human Presence Selected: ${humanPresence}
+**Nombre de la Marca:** ${brandName}
+**Identidad del Negocio:** ${brandIdentity}
+**Tipo:** ${productType === 'producto' ? 'Producto' : 'Servicio'}
+**Producto/Servicio Principal:** ${productName}
 
-Reference Images Available: ${images.length > 0 ? 'Yes' : 'No'}
-${images.length > 0 ? `Primary Reference Image: ${images[0]}` : ''}
+**Resumen del Negocio:**
+${summary || 'No disponible'}
 
-Generate 3 distinct Instagram story concepts that:
-1. Align with the brand identity and visual style preferences
-2. Highlight the ${productName}
-3. Maintain consistency with the chosen aesthetic
-4. Are optimized for Instagram stories (9:16 vertical format)
+═══════════════════════════════════════════════════════════
+🎨 IDENTIDAD VISUAL - COLORES DE MARCA
+═══════════════════════════════════════════════════════════
+
+**Paleta de Colores de la Marca:**
+${colorPalette}
+
+**Color Primario:** ${primaryColor || 'No detectado'}
+**Color Secundario:** ${secondaryColor || 'No detectado'}
+
+**INSTRUCCIÓN CRÍTICA:** DEBES usar estos colores de marca como BASE FUNDAMENTAL para todas las imágenes generadas. Los colores de marca NO son sugerencias, son REQUISITOS OBLIGATORIOS. Cada imagen debe incorporar estos colores de manera prominente y visible. Si hay múltiples colores, úsalos en combinación armoniosa. Si solo hay un color, úsalo como color dominante con acentos complementarios.
+
+**Logo de la Marca:** ${logoUrl || 'No disponible'}
+${logoUrl ? '**INSTRUCCIÓN:** El logo debe aparecer visiblemente en cada post, integrado de manera elegante y profesional.' : ''}
+
+═══════════════════════════════════════════════════════════
+✨ ELECCIONES VISUALES DEL CLIENTE
+═══════════════════════════════════════════════════════════
+
+**1. ESTILO VISUAL SELECCIONADO:**
+${visualStyleOption ? `
+- **Opción Elegida:** "${visualStyleOption.text}"
+- **Color Asociado:** ${visualStyleOption.color}
+- **Descripción:** ${visualStyleOption.description || 'N/A'}
+- **Cómo se ve:** ${visualStyleOption.howItLooks || 'N/A'}
+- **Por qué funciona:** ${visualStyleOption.whyItWorks || 'N/A'}
+- **Útil para:** ${visualStyleOption.usefulFor || 'N/A'}
+` : `- No seleccionado`}
+
+**2. RITMO VISUAL SELECCIONADO:**
+${visualRhythmOption ? `
+- **Opción Elegida:** "${visualRhythmOption.text}"
+- **Color Asociado:** ${visualRhythmOption.color}
+- **Descripción:** ${visualRhythmOption.description || 'N/A'}
+- **Cómo se ve:** ${visualRhythmOption.howItLooks || 'N/A'}
+- **Por qué funciona:** ${visualRhythmOption.whyItWorks || 'N/A'}
+- **Útil para:** ${visualRhythmOption.usefulFor || 'N/A'}
+` : `- No seleccionado`}
+
+**3. PRESENCIA HUMANA SELECCIONADA:**
+${humanPresenceOption ? `
+- **Opción Elegida:** "${humanPresenceOption.text}"
+- **Color Asociado:** ${humanPresenceOption.color}
+- **Descripción:** ${humanPresenceOption.description || 'N/A'}
+- **Cómo se ve:** ${humanPresenceOption.howItLooks || 'N/A'}
+- **Por qué funciona:** ${humanPresenceOption.whyItWorks || 'N/A'}
+- **Útil para:** ${humanPresenceOption.usefulFor || 'N/A'}
+` : `- No seleccionado`}
+
+**Contexto de Selecciones Visuales:**
+${selectionStackContext || 'No disponible'}
+
+═══════════════════════════════════════════════════════════
+🖼️ REFERENCIAS VISUALES DISPONIBLES
+═══════════════════════════════════════════════════════════
+
+**Imágenes de Referencia:** ${images.length > 0 ? `${images.length} imágenes disponibles` : 'No hay imágenes de referencia'}
+${images.length > 0 ? `**Imagen Principal:** ${images[0]}` : ''}
+${images.length > 1 ? `**Imágenes Adicionales:** ${images.slice(1, 4).join(', ')}` : ''}
+
+**INSTRUCCIÓN:** Usa estas imágenes como referencia visual para mantener consistencia con el estilo fotográfico, composición, iluminación y estética general de la marca.
+
+═══════════════════════════════════════════════════════════
+📱 REQUISITOS TÉCNICOS
+═══════════════════════════════════════════════════════════
+
+- **Formato:** Instagram Post Cuadrado (1:1, ratio 1024:1024)
+- **Cantidad:** 3 conceptos distintos y únicos
+- **Estilo:** Cada concepto debe ser visualmente distinto pero mantener coherencia de marca
+- **CAPTION:** Cada concepto DEBE incluir un caption profesional en ESPAÑOL que sea atractivo, relevante para la marca y optimizado para Instagram
+
+═══════════════════════════════════════════════════════════
+🎯 INSTRUCCIONES CRÍTICAS DE GENERACIÓN
+═══════════════════════════════════════════════════════════
+
+**OBLIGATORIO - USO DE COLORES DE MARCA:**
+1. Los colores de marca (${colorPalette}) DEBEN ser el elemento visual dominante en cada imagen
+2. Usa los colores de marca en fondos, acentos, textos, elementos gráficos, y cualquier elemento visual
+3. Si hay múltiples colores, crea combinaciones armoniosas que los incorporen todos
+4. Los colores de marca NO son opcionales - son la base de la identidad visual
+
+**OBLIGATORIO - INTEGRACIÓN DEL LOGO:**
+${logoUrl ? `1. El logo (${logoUrl}) DEBE aparecer visiblemente en cada post
+2. Integra el logo de forma elegante, profesional y reconocible
+3. El logo puede estar en esquinas, centrado, o integrado creativamente pero SIEMPRE visible` : '1. No hay logo disponible - enfócate en usar los colores de marca de forma prominente'}
+
+**OBLIGATORIO - RESPETO A LAS ELECCIONES VISUALES:**
+1. **Estilo Visual "${visualStyleOption?.text || visualStyleId}":** ${visualStyleOption?.howItLooks || 'Aplicar el estilo seleccionado'}
+2. **Ritmo Visual "${visualRhythmOption?.text || visualRhythmId}":** ${visualRhythmOption?.howItLooks || 'Aplicar el ritmo seleccionado'}
+3. **Presencia Humana "${humanPresenceOption?.text || humanPresenceId}":** ${humanPresenceOption?.howItLooks || 'Aplicar la presencia seleccionada'}
+
+**OBLIGATORIO - DESTACAR EL PRODUCTO/SERVICIO:**
+- El ${productType === 'producto' ? 'producto' : 'servicio'} "${productName}" debe ser el protagonista visual de cada post
+- Integra "${productName}" de manera prominente y atractiva
+- Usa los colores de marca para resaltar "${productName}"
+
+**OBLIGATORIO - COHERENCIA DE MARCA:**
+- Mantén consistencia visual entre las 3 posts
+- Usa los mismos colores de marca en todas
+- Integra el logo de forma consistente
+- Respeta el estilo, ritmo y presencia humana seleccionados en todas las historias
+
+**OBLIGATORIO - CAPTIONS EN ESPAÑOL:**
+- Cada concepto DEBE incluir un caption profesional en ESPAÑOL
+- El caption debe ser atractivo, relevante para la marca "${brandName}" y el producto/servicio "${productName}"
+- Optimizado para engagement en Instagram (puede incluir emojis relevantes, llamados a la acción, hashtags sugeridos)
+- Debe reflejar el tono y estilo de la marca
+
+═══════════════════════════════════════════════════════════
+✨ GENERA 3 CONCEPTOS DISTINTOS QUE:
+═══════════════════════════════════════════════════════════
+
+1. **Concepto 1:** Enfocado en ${visualStyleOption?.text || 'el estilo visual seleccionado'}, usando los colores de marca ${allBrandColors[0] || ''} como dominante, con ${humanPresenceOption?.text || 'la presencia humana seleccionada'}, ritmo ${visualRhythmOption?.text || 'seleccionado'}
+
+2. **Concepto 2:** Variación del concepto 1 pero con enfoque diferente en la presentación de "${productName}", manteniendo los colores de marca ${allBrandColors[1] || allBrandColors[0] || ''} como acento principal
+
+3. **Concepto 3:** Enfoque más ${visualRhythmOption?.text === 'rapido' ? 'dinámico y energético' : visualRhythmOption?.text === 'lento' ? 'sereno y cinematográfico' : 'equilibrado y profesional'}, destacando "${productName}" con los colores de marca en combinación completa
+
+**RECUERDA:** Cada concepto debe ser ÚNICO visualmente pero mantener la coherencia de marca a través de los colores, logo, y elecciones visuales del cliente. Cada concepto debe tener un "description" (prompt de imagen en inglés) y un "caption" (caption de Instagram en español).
 `;
 
         // Step 2: Generate campaign descriptions using the campaign visualizer
@@ -160,38 +313,71 @@ Generate 3 distinct Instagram story concepts that:
             }, { status: 500 });
         }
 
-        // Step 3: Extract individual story descriptions using the extractor agents
-        console.log("📝 Extracting individual story descriptions...");
-        const extractor1 = mastra.getAgent("postExtractor1Agent");
-        const extractor2 = mastra.getAgent("postExtractor2Agent");
-        const extractor3 = mastra.getAgent("postExtractor3Agent");
+        console.log("📝 Parsing campaign descriptions...");
 
-        if (!extractor1 || !extractor2 || !extractor3) {
-            return NextResponse.json({ success: false, error: "Extractor agents not found" }, { status: 500 });
-        }
+        const extractCaption = (item: any): string => {
+            if (!item) return "";
+            if (typeof item === "string") {
+                try {
+                    const parsed = JSON.parse(item);
+                    if (parsed && typeof parsed.caption === "string") {
+                        return parsed.caption;
+                    }
+                } catch {
+                    return item;
+                }
+                return item;
+            }
+            if (typeof item.caption === "string") {
+                return item.caption;
+            }
+            if (typeof item === "object" && item.caption) {
+                return String(item.caption);
+            }
+            return "";
+        };
 
-        const [post1Result, post2Result, post3Result] = await Promise.all([
-            extractor1.generate(JSON.stringify(campaignDescriptions)),
-            extractor2.generate(JSON.stringify(campaignDescriptions)),
-            extractor3.generate(JSON.stringify(campaignDescriptions)),
-        ]);
+        const extractDescription = (item: any): string => {
+            if (!item) return "";
+            if (typeof item === "string") {
+                try {
+                    const parsed = JSON.parse(item);
+                    if (parsed && typeof parsed.description === "string") {
+                        return parsed.description;
+                    }
+                } catch {
+                    return item;
+                }
+                return item;
+            }
+            if (typeof item.description === "string") {
+                return item.description;
+            }
+            if (typeof item === "object" && item.description) {
+                return String(item.description);
+            }
+            return "";
+        };
 
         const posts = [
             {
                 id: 1,
-                description: post1Result.text,
+                description: extractDescription(campaignDescriptions["ID:1"]),
+                caption: extractCaption(campaignDescriptions["ID:1"]),
             },
             {
                 id: 2,
-                description: post2Result.text,
+                description: extractDescription(campaignDescriptions["ID:2"]),
+                caption: extractCaption(campaignDescriptions["ID:2"]),
             },
             {
                 id: 3,
-                description: post3Result.text,
+                description: extractDescription(campaignDescriptions["ID:3"]),
+                caption: extractCaption(campaignDescriptions["ID:3"]),
             },
         ];
 
-        console.log("✅ Successfully generated 3 story descriptions");
+        console.log("✅ Successfully parsed 3 post concepts with descriptions and captions");
 
         // Step 4: Generate images for each story using Runway SDK with Gemini 2.5 Flash
         console.log("🎨 Generating images with Runway...");
@@ -225,7 +411,7 @@ Generate 3 distinct Instagram story concepts that:
                 const task = await runwayClient.textToImage.create({
                     promptText: cleanDescription,
                     model: "gemini_2.5_flash",
-                    ratio: "768:1344", // 9:16 vertical format for Instagram stories
+                    ratio: "1024:1024",
                     referenceImages: referenceImages.length > 0 ? referenceImages.map(img => ({ ...img, tag: "reference" })) : undefined,
                 }).waitForTaskOutput();
 
@@ -246,7 +432,7 @@ Generate 3 distinct Instagram story concepts that:
 
         const postsWithImages = await Promise.all(imageGenerationPromises);
 
-        console.log("✅ Successfully generated images for stories");
+        console.log("✅ Successfully generated images for posts");
 
         // Return the results
         const result: PostGenerationResult = {
