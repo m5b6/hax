@@ -168,6 +168,7 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
       // Answers are already synced to store via handleSelect
+      // StepFinal will handle video prompt generation when it mounts
       onNext();
     }
   };

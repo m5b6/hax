@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users } from "lucide-react";
+import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import CircularGallery from "./CircularGallery";
 import { useWizardStore } from "@/contexts/WizardStore";
 import { StepTransitionLoader } from "./StepTransitionLoader";
@@ -103,23 +103,135 @@ export const StepFinal = () => {
   }, [selectedOptions]);
   
   const [isGenerating, setIsGenerating] = useState(true);
+  const [streamedPrompt, setStreamedPrompt] = useState("");
+  const [videoPrompt, setVideoPrompt] = useState<string | null>(null);
+  const hasGeneratedRef = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsGenerating(false);
-    }, 3500);
-    return () => clearTimeout(timer);
-  }, []);
+    // Only generate once when component mounts
+    if (hasGeneratedRef.current) return;
+    hasGeneratedRef.current = true;
+
+    const generateVideoPrompt = async () => {
+      const wizardData = {
+        inputs: wizardStore.getAllInputs(),
+        agentResponses: wizardStore.getAllAgentResponses(),
+        metadata: wizardStore.data.metadata,
+      };
+
+      try {
+        const response = await fetch("/api/agent/video-prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wizardData }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to generate video prompt");
+        }
+
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("No reader available");
+        }
+
+        const decoder = new TextDecoder();
+        let fullPrompt = "";
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            // Process any remaining buffer
+            if (buffer.trim()) {
+              fullPrompt += buffer;
+              setStreamedPrompt(fullPrompt);
+            }
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          
+          // Keep the last incomplete line in buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            // AI SDK format: lines starting with "0:" contain the text content
+            // Format: "0:" followed by JSON-encoded string
+            if (line.startsWith("0:")) {
+              try {
+                const content = line.slice(2).trim();
+                // Parse the JSON-encoded content
+                const textContent = JSON.parse(content);
+                if (typeof textContent === "string") {
+                  fullPrompt += textContent;
+                  setStreamedPrompt(fullPrompt);
+                }
+              } catch (e) {
+                // If parsing fails, try to extract text directly
+                const textContent = line.slice(2).trim();
+                // Remove surrounding quotes if present
+                const cleaned = textContent.replace(/^["']|["']$/g, "");
+                if (cleaned) {
+                  fullPrompt += cleaned;
+                  setStreamedPrompt(fullPrompt);
+                }
+              }
+            } else if (line.trim() && !line.startsWith("data:") && !line.startsWith("{")) {
+              // Fallback: if it's not AI SDK format, treat as plain text
+              // This handles cases where toTextStreamResponse returns plain text
+              fullPrompt += line + "\n";
+              setStreamedPrompt(fullPrompt);
+            }
+          }
+        }
+
+        // Save final prompt to store
+        setVideoPrompt(fullPrompt);
+        wizardStore.setAgentResponse("videoPrompt", fullPrompt);
+        setIsGenerating(false);
+      } catch (error) {
+        console.error("Error generating video prompt:", error);
+        setIsGenerating(false);
+      }
+    };
+
+    generateVideoPrompt();
+  }, [wizardStore]);
 
   if (isGenerating) {
     return (
-      <StepTransitionLoader
-        items={loadingItems}
-        title="Creando tu campaña..."
-        gradientColors={gradientColors}
-      />
+      <div className="w-full">
+        <StepTransitionLoader
+          items={loadingItems}
+          title="Generando campaña..."
+          gradientColors={gradientColors}
+        />
+        {/* Show streamed prompt content */}
+        {streamedPrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 glass-panel rounded-xl p-4 max-h-[240px] overflow-y-auto"
+            style={{
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.7)'
+            }}
+          >
+            <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed">
+              {streamedPrompt}
+            </pre>
+          </motion.div>
+        )}
+      </div>
     );
   }
+
+  // Get video prompt from store or state
+  const finalVideoPrompt = videoPrompt || wizardStore.getAgentResponse("videoPrompt") || "";
 
   return (
     <div className="space-y-12">
@@ -146,6 +258,50 @@ export const StepFinal = () => {
           </p>
         </motion.div>
       </div>
+
+      {/* Video Prompt Card */}
+      {finalVideoPrompt && (
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+        >
+          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
+            style={{
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
+            }}
+          >
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-5 px-6">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2.5 text-slate-900 font-medium">
+                  <Video className="w-4 h-4 text-slate-500" />
+                  <span>Guía Visual</span>
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(finalVideoPrompt);
+                  }}
+                  className="h-7 w-7 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50/50 p-5 rounded-xl border border-slate-100 max-h-[320px] overflow-y-auto"
+                style={{
+                  fontSize: '0.75rem',
+                  lineHeight: '1.6',
+                }}
+              >
+                {finalVideoPrompt}
+              </pre>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <div className="grid gap-8">
         <motion.div
