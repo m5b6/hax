@@ -21,8 +21,16 @@ const analysisSchema = z.object({
     confidence: z.enum(["high", "medium", "low"]),
   })).max(10),
   summary: z.string(),
-  concreteProducts: z.array(z.string()).max(10),
-  concreteServices: z.array(z.string()).max(10),
+  concreteProducts: z.array(z.object({
+    name: z.string(),
+    icon: z.string().nullable(),
+    color: z.string().nullable(),
+  })).max(10),
+  concreteServices: z.array(z.object({
+    name: z.string(),
+    icon: z.string().nullable(),
+    color: z.string().nullable(),
+  })).max(10),
   primaryColor: z.string().nullable(),
   secondaryColor: z.string().nullable(),
   brandLogoUrl: z.string().nullable(),
@@ -69,57 +77,37 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
     let secondaryColor: string | null = parsedOutput.secondaryColor ?? null;
     let brandLogoUrl: string | null = parsedOutput.brandLogoUrl ?? null;
     
+    console.log('[API] ===== TOOL RESULTS DEBUG =====');
     console.log('[API] Tool results count:', toolResults.length);
-    console.log('[API] Full result structure:', JSON.stringify(result, null, 2).substring(0, 500));
+    console.log('[API] Tool results structure:', JSON.stringify(toolResults, null, 2));
     
     for (const toolResult of toolResults) {
-      let resultObj: any = null;
+      const resultObj = toolResult.payload?.result || toolResult.result || toolResult.output || toolResult;
       
-      if (toolResult.result) {
-        if (typeof toolResult.result === 'string') {
-          try {
-            resultObj = JSON.parse(toolResult.result);
-          } catch {
-            resultObj = toolResult.result;
-          }
-        } else if (typeof toolResult.result === 'object') {
-          resultObj = toolResult.result;
+      if (resultObj && typeof resultObj === 'object') {
+        if (Array.isArray(resultObj.images)) {
+          images = resultObj.images.filter((img: any) => typeof img === 'string' && img.trim().length > 0);
         }
-      }
-      
-      if (!resultObj && toolResult.output) {
-        resultObj = typeof toolResult.output === 'string' ? JSON.parse(toolResult.output) : toolResult.output;
-      }
-      
-      if (!resultObj && typeof toolResult === 'object' && 'images' in toolResult) {
-        resultObj = toolResult;
-      }
-      
-      if (resultObj) {
-        console.log('[API] Tool result keys:', Object.keys(resultObj));
-        console.log('[API] Images in tool result:', Array.isArray(resultObj.images) ? resultObj.images.length : 'not an array', typeof resultObj.images);
         
-        const extractedColors = resultObj.colors;
-        if (Array.isArray(extractedColors) && extractedColors.length > 0) {
-          colors = extractedColors;
+        if (Array.isArray(resultObj.colors)) {
+          colors = resultObj.colors;
         }
-        if (!primaryColor && typeof resultObj.primaryColor === 'string') {
+        
+        if (!primaryColor && resultObj.primaryColor) {
           primaryColor = resultObj.primaryColor;
         }
-        if (!secondaryColor && typeof resultObj.secondaryColor === 'string') {
+        if (!secondaryColor && resultObj.secondaryColor) {
           secondaryColor = resultObj.secondaryColor;
         }
-        if (!brandLogoUrl && typeof resultObj.logoUrl === 'string') {
+        if (!brandLogoUrl && resultObj.logoUrl) {
           brandLogoUrl = resultObj.logoUrl;
-        }
-        if (Array.isArray(resultObj.images) && resultObj.images.length > 0) {
-          console.log('[API] Adding images:', resultObj.images.length);
-          images = images.concat(resultObj.images.filter((img: any) => typeof img === 'string' && img.trim().length > 0));
         }
       }
     }
     
-    console.log('[API] Final images count:', images.length);
+    console.log('[API] Final images:', images.length);
+    console.log('[API] Final colors:', colors.length);
+    console.log('[API] ===== END DEBUG =====');
 
     if (!primaryColor && colors.length > 0) {
       primaryColor = colors[0];

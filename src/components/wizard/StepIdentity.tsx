@@ -3,42 +3,29 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
-import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil } from "lucide-react";
+import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil, Sparkles, Search, Eye } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InsightsChip } from "./InsightsChip";
 import { useBrand } from "@/contexts/BrandContext";
+import { useWizardStore } from "@/contexts/WizardStore";
+import { URLAnalysis, Insight } from "@/types/wizard";
+import { RotatingLoader } from "@/components/ui/rotating-loader";
 
 interface StepIdentityProps {
-  onNext: (data: any) => void;
+  onNext: () => void;
   onAnalyzingChange?: (isAnalyzing: boolean) => void;
-  onNameChange?: (name: string) => void;
 }
 
 interface ProductServiceOption {
   value: string;
   label: string;
   source: string;
+  icon?: string;
+  color?: string;
 }
 
-type InsightType = "style" | "info" | "products" | "services" | "target_audience" | "tone" | "pricing" | "features" | "integrations" | "tech_stack";
-
-interface Insight {
-  type: InsightType;
-  label: string;
-  value: string;
-  confidence?: "high" | "medium" | "low";
-}
-
-interface URLAnalysis {
-  url: string;
-  insights: Insight[];
-  logoUrl?: string | null;
-  primaryColor?: string | null;
-  secondaryColor?: string | null;
-  images?: string[];
-}
-
-const insightIcons: Record<InsightType, React.ComponentType<any>> = {
+const insightIcons: Record<Insight["type"], React.ComponentType<any>> = {
   style: Palette,
   info: Info,
   products: Package,
@@ -51,7 +38,7 @@ const insightIcons: Record<InsightType, React.ComponentType<any>> = {
   tech_stack: Code,
 };
 
-const insightColors: Record<InsightType, string> = {
+const insightColors: Record<Insight["type"], string> = {
   style: "from-pink-500 to-rose-500",
   info: "from-blue-500 to-cyan-500",
   products: "from-purple-500 to-indigo-500",
@@ -64,44 +51,123 @@ const insightColors: Record<InsightType, string> = {
   tech_stack: "from-slate-500 to-gray-600",
 };
 
-export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepIdentityProps) => {
+// Helper to get icon component by name from lucide-react
+const getIconByName = (iconName: string): React.ComponentType<any> => {
+  if (!iconName || typeof iconName !== 'string') {
+    return Package; // Default icon
+  }
+  
+  // Try exact match first
+  const exactMatch = LucideIcons[iconName as keyof typeof LucideIcons];
+  if (exactMatch) {
+    return exactMatch as React.ComponentType<any>;
+  }
+  
+  // Try case-insensitive match
+  const normalizedName = iconName.charAt(0).toUpperCase() + iconName.slice(1);
+  const caseMatch = LucideIcons[normalizedName as keyof typeof LucideIcons];
+  if (caseMatch) {
+    return caseMatch as React.ComponentType<any>;
+  }
+  
+  return Package; // Fallback
+};
+
+export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) => {
+  const wizardStore = useWizardStore();
   const { setBrandColors, setBrandLogoUrl: setGlobalBrandLogo, setBrandImages, brandImages } = useBrand();
-  const [name, setName] = useState("");
-  const [identity, setIdentity] = useState("");
-  const [urls, setUrls] = useState<string[]>([""]);
-  const [type, setType] = useState<"producto" | "servicio">("producto");
-  const [productName, setProductName] = useState("");
-  const [urlAnalyses, setUrlAnalyses] = useState<Map<string, URLAnalysis>>(new Map());
+  
+  // Get initial values from store
+  const storedName = wizardStore.getInput("name") || "";
+  const storedIdentity = wizardStore.getInput("identity") || "";
+  const storedUrls = wizardStore.getInput("urls") || [""];
+  const storedType = wizardStore.getInput("type") || "producto";
+  const storedProductName = wizardStore.getInput("productName") || "";
+  const storedUrlAnalyses = wizardStore.getAgentResponse("urlAnalyses") || [];
+  
+  const [name, setName] = useState(storedName);
+  const [identity, setIdentity] = useState(storedIdentity);
+  const [urls, setUrls] = useState<string[]>(storedUrls.length > 0 ? storedUrls : [""]);
+  const [type, setType] = useState<"producto" | "servicio">(storedType as "producto" | "servicio");
+  const [productName, setProductName] = useState(storedProductName);
   const [analyzingUrls, setAnalyzingUrls] = useState<Set<string>>(new Set());
   const [discoveredProducts, setDiscoveredProducts] = useState<ProductServiceOption[]>([]);
   const [discoveredServices, setDiscoveredServices] = useState<ProductServiceOption[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
-  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
+  
+  // Create a Map from stored analyses for easier lookup
+  const urlAnalysesMap = new Map<string, URLAnalysis>(
+    storedUrlAnalyses.map((analysis: URLAnalysis) => [analysis.url, analysis])
+  );
+  const [urlAnalyses, setUrlAnalyses] = useState<Map<string, URLAnalysis>>(urlAnalysesMap);
+
+  // Sync local state to store
+  useEffect(() => {
+    wizardStore.setInput("name", name);
+  }, [name]);
 
   useEffect(() => {
-    onNameChange?.(name);
-  }, [name, onNameChange]);
+    wizardStore.setInput("identity", identity);
+  }, [identity]);
+
+  useEffect(() => {
+    wizardStore.setInput("urls", urls.filter((u) => u));
+  }, [urls]);
+
+  useEffect(() => {
+    wizardStore.setInput("type", type);
+  }, [type]);
+
+  useEffect(() => {
+    wizardStore.setInput("productName", productName);
+    
+    // Add or update first pick to selection stack when productName is set
+    if (productName && productName.trim() !== "") {
+      const stack = wizardStore.getSelectionStack();
+      const firstPickIndex = stack.findIndex(item => item.id === "first-pick");
+      
+      // Determine icon and color based on type
+      const icon = type === "producto" ? "Package" : "Briefcase";
+      const color = type === "producto" ? "#3B82F6" : "#10B981";
+      const text = type === "producto" ? "Producto" : "Servicio";
+      const firstPickItem = {
+        id: "first-pick",
+        text: `${text}: ${productName}`,
+        icon: icon,
+        color: color,
+      };
+      
+      // Preserve brand logo at the beginning
+      const brandLogo = stack.find(item => item.id === "brand-logo");
+      const otherItems = stack.filter(item => item.id !== "first-pick" && item.id !== "brand-logo");
+      
+      if (firstPickIndex === -1) {
+        // Add first pick after brand logo
+        const updatedStack = brandLogo 
+          ? [brandLogo, firstPickItem, ...otherItems]
+          : [firstPickItem, ...otherItems];
+        wizardStore.setAgentResponse("selectionStack", updatedStack);
+      } else {
+        // Update existing first pick, keeping brand logo first
+        const updatedStack = brandLogo
+          ? [brandLogo, firstPickItem, ...otherItems]
+          : [firstPickItem, ...otherItems];
+        wizardStore.setAgentResponse("selectionStack", updatedStack);
+      }
+    } else {
+      // Remove first pick if productName is cleared
+      const stack = wizardStore.getSelectionStack();
+      const updatedStack = stack.filter(item => item.id !== "first-pick");
+      if (updatedStack.length !== stack.length) {
+        wizardStore.setAgentResponse("selectionStack", updatedStack);
+      }
+    }
+  }, [productName, type]);
 
   useEffect(() => {
     onAnalyzingChange?.(analyzingUrls.size > 0);
   }, [analyzingUrls.size, onAnalyzingChange]);
-
-  const addUrl = () => setUrls([...urls, ""]);
-  const removeUrl = (index: number) => {
-    const removedUrl = urls[index];
-    setUrls(urls.filter((_, i) => i !== index));
-    if (removedUrl) {
-      const newAnalyses = new Map(urlAnalyses);
-      newAnalyses.delete(removedUrl);
-      setUrlAnalyses(newAnalyses);
-    }
-  };
-  const updateUrl = (index: number, value: string) => {
-    const newUrls = [...urls];
-    newUrls[index] = value;
-    setUrls(newUrls);
-  };
 
   const formatUrl = (url: string): string => {
     let formatted = url.trim();
@@ -112,6 +178,24 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       formatted = formatted + '/';
     }
     return formatted;
+  };
+
+  const addUrl = () => setUrls([...urls, ""]);
+  const removeUrl = (index: number) => {
+    const removedUrl = urls[index];
+    const formattedUrl = removedUrl ? formatUrl(removedUrl) : null;
+    setUrls(urls.filter((_, i) => i !== index));
+    if (formattedUrl) {
+      const newAnalyses = new Map(urlAnalyses);
+      newAnalyses.delete(formattedUrl);
+      setUrlAnalyses(newAnalyses);
+      wizardStore.removeURLAnalysis(formattedUrl);
+    }
+  };
+  const updateUrl = (index: number, value: string) => {
+    const newUrls = [...urls];
+    newUrls[index] = value;
+    setUrls(newUrls);
   };
 
   const analyzeUrl = async (url: string, index: number) => {
@@ -137,14 +221,21 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       const data = await response.json();
       
       if (data && data.insights && Array.isArray(data.insights)) {
-        setUrlAnalyses((prev) => new Map(prev).set(formattedUrl, {
+        const analysis: URLAnalysis = {
           url: formattedUrl,
           insights: data.insights,
           logoUrl: data.brandLogoUrl ?? null,
           primaryColor: data.primaryColor ?? null,
           secondaryColor: data.secondaryColor ?? null,
           images: Array.isArray(data.images) ? data.images : [],
-        }));
+          summary: data.summary,
+          concreteProducts: data.concreteProducts,
+          concreteServices: data.concreteServices,
+          colors: data.colors,
+        };
+        
+        setUrlAnalyses((prev) => new Map(prev).set(formattedUrl, analysis));
+        wizardStore.addURLAnalysis(analysis);
       }
 
       const colorCandidates = [
@@ -158,8 +249,22 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       }
 
       if (data.brandLogoUrl) {
-        setBrandLogoUrl(data.brandLogoUrl);
         setGlobalBrandLogo(data.brandLogoUrl);
+        
+        // Add brand logo to selection stack as first item
+        const currentStack = wizardStore.getSelectionStack();
+        const logoExists = currentStack.some(item => item.id === "brand-logo");
+        
+        if (!logoExists) {
+          const logoItem = {
+            id: "brand-logo",
+            text: "Marca",
+            icon: "Image", // Fallback icon, but we'll render the actual logo
+            color: "#6366F1", // Default indigo color
+          };
+          // Add logo at the very beginning of the stack
+          wizardStore.setAgentResponse("selectionStack", [logoItem, ...currentStack]);
+        }
       }
 
       if (Array.isArray(data.images) && data.images.length > 0) {
@@ -176,11 +281,23 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       }
 
       if (data.concreteProducts && Array.isArray(data.concreteProducts)) {
-        const products: ProductServiceOption[] = data.concreteProducts.map((p: string) => ({
-          value: p,
-          label: p,
-          source: formattedUrl,
-        }));
+        const products: ProductServiceOption[] = data.concreteProducts.map((p: any) => {
+          // Handle both old format (string) and new format (object)
+          if (typeof p === 'string') {
+            return {
+              value: p,
+              label: p,
+              source: formattedUrl,
+            };
+          }
+          return {
+            value: p.name || p,
+            label: p.name || p,
+            source: formattedUrl,
+            icon: p.icon,
+            color: p.color,
+          };
+        });
         setDiscoveredProducts((prev) => {
           const combined = [...prev, ...products];
           const unique = combined.filter((item, index, self) => 
@@ -191,11 +308,23 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       }
 
       if (data.concreteServices && Array.isArray(data.concreteServices)) {
-        const services: ProductServiceOption[] = data.concreteServices.map((s: string) => ({
-          value: s,
-          label: s,
-          source: formattedUrl,
-        }));
+        const services: ProductServiceOption[] = data.concreteServices.map((s: any) => {
+          // Handle both old format (string) and new format (object)
+          if (typeof s === 'string') {
+            return {
+              value: s,
+              label: s,
+              source: formattedUrl,
+            };
+          }
+          return {
+            value: s.name || s,
+            label: s.name || s,
+            source: formattedUrl,
+            icon: s.icon,
+            color: s.color,
+          };
+        });
         setDiscoveredServices((prev) => {
           const combined = [...prev, ...services];
           const unique = combined.filter((item, index, self) => 
@@ -237,19 +366,41 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
     }
   }, [discoveredProducts, discoveredServices, type]);
 
-  const handleNext = () => {
-    if (name && identity && productName) {
-      onNext({ 
-        name,
-        identity, 
-        urls: urls.filter((u) => u), 
-        type, 
-        productName, 
-        urlAnalyses: Array.from(urlAnalyses.values()),
-        brandLogoUrl,
-        brandImages,
+  const handleNext = async () => {
+    if (!name || !identity || !productName) return;
+    
+    // All data is already synced to store via useEffect hooks
+    // Trigger MCQ generation in background and move to next step immediately
+    // StepStrategy will show loading while MCQs are being generated
+    
+    const wizardData = {
+      inputs: wizardStore.getAllInputs(),
+      agentResponses: wizardStore.getAllAgentResponses(),
+      metadata: wizardStore.data.metadata,
+    };
+
+    // Start MCQ generation in background (don't await)
+    fetch("/api/agent/generate-mcqs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wizardData }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to generate MCQs");
+        }
+        return response.json();
+      })
+      .then(({ questions }) => {
+        // Store MCQs in wizard store when ready
+        wizardStore.setAgentResponse("mcqQuestions", questions);
+      })
+      .catch((error) => {
+        console.error("Error generating MCQs:", error);
       });
-    }
+
+    // Move to next step immediately
+    onNext();
   };
 
   return (
@@ -310,14 +461,14 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
                     <div className="relative flex-1">
                       <Input
                         placeholder="https://..."
-                        className={`glass-input h-12 text-base rounded-2xl px-4 pr-12 transition-all duration-500 ${
-                          isAnalyzing ? 'ring-2 ring-blue-400/30 shadow-lg shadow-blue-500/10' : ''
+                        className={`glass-input h-12 text-base rounded-2xl px-4 transition-all duration-500 ${
+                          isAnalyzing ? 'ring-2 ring-blue-400/30 shadow-lg shadow-blue-500/10 pr-32' : 'pr-12'
                         }`}
                         value={url}
                         onChange={(e) => updateUrl(index, e.target.value)}
                         disabled={!!isAnalyzing}
                       />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6">
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
                         <AnimatePresence mode="wait">
                           {isAnalyzing && (
                             <motion.div
@@ -325,25 +476,20 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
                               initial={{ opacity: 0, scale: 0.8 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.8 }}
-                              className="absolute inset-0 flex items-center justify-center"
                             >
-                              <div className="relative w-5 h-5">
-                                <motion.div
-                                  className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500 opacity-20"
-                                  animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0, 0.2] }}
-                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                />
-                                <motion.div
-                                  className="absolute inset-0.5 rounded-full border-2 border-blue-500"
-                                  style={{ 
-                                    borderTopColor: 'transparent',
-                                    borderRightColor: 'rgb(147, 51, 234)',
-                                  }}
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                                />
-                                <div className="absolute inset-[6px] rounded-full bg-gradient-to-tr from-blue-400 to-purple-500" />
-                              </div>
+                              <RotatingLoader
+                                items={[
+                                  { text: "Analizando...", icon: Sparkles },
+                                  { text: "Extrayendo insights...", icon: Search },
+                                  { text: "Detectando colores...", icon: Palette },
+                                  { text: "Buscando productos...", icon: Package },
+                                ]}
+                                spinnerSize="sm"
+                                textSize="sm"
+                                interval={2000}
+                                showSpinner={false}
+                                className="text-slate-800"
+                              />
                             </motion.div>
                           )}
                           {!isAnalyzing && analysis && analysis.insights.length > 0 && (
@@ -352,7 +498,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
                               initial={{ opacity: 0, scale: 0 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0 }}
-                              className="absolute inset-0 flex items-center justify-center"
+                              className="flex items-center justify-center"
                             >
                               <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-green-400 to-emerald-500 shadow-lg shadow-green-500/30 flex items-center justify-center">
                                 <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -392,37 +538,35 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
         <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/50 shadow-inner">
           <button
             onClick={() => setType("producto")}
-            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden ${
+            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
               type === "producto"
-                ? "text-slate-900"
+                ? "text-slate-900 glass-input shadow-md"
                 : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            {type === "producto" && (
-              <motion.div 
-                layoutId="activeTab"
-                className="absolute inset-0 glass-input rounded-xl"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-              />
-            )}
-            <span className="relative z-10">Producto</span>
+            <Package className={`w-4 h-4 ${type === "producto" ? "text-slate-900" : "text-slate-400"}`} />
+            <span>
+              Productos
+              {discoveredProducts.length > 0 && (
+                <span className="font-bold"> ({discoveredProducts.length})</span>
+              )}
+            </span>
           </button>
           <button
             onClick={() => setType("servicio")}
-            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden ${
+            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
               type === "servicio"
-                ? "text-slate-900"
+                ? "text-slate-900 glass-input shadow-md"
                 : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            {type === "servicio" && (
-              <motion.div 
-                layoutId="activeTab"
-                className="absolute inset-0 glass-input rounded-xl"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-              />
-            )}
-            <span className="relative z-10">Servicio</span>
+            <Briefcase className={`w-4 h-4 ${type === "servicio" ? "text-slate-900" : "text-slate-400"}`} />
+            <span>
+              Servicios
+              {discoveredServices.length > 0 && (
+                <span className="font-bold"> ({discoveredServices.length})</span>
+              )}
+            </span>
           </button>
         </div>
 
@@ -440,14 +584,50 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
               }
             }}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona un producto..." />
+                {productName ? (() => {
+                  const selected = discoveredProducts.find(p => p.value === productName);
+                  if (selected) {
+                    const ProductIcon = selected.icon ? getIconByName(selected.icon) : Package;
+                    const productColor = selected.color || "#3B82F6";
+                    return (
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${productColor}15`,
+                            color: productColor,
+                          }}
+                        >
+                          <ProductIcon className="w-3 h-3" />
+                        </div>
+                        <span>{selected.label}</span>
+                      </div>
+                    );
+                  }
+                  return <SelectValue placeholder="Selecciona un producto..." />;
+                })() : <SelectValue placeholder="Selecciona un producto..." />}
               </SelectTrigger>
               <SelectContent>
-                {discoveredProducts.map((product, i) => (
-                  <SelectItem key={i} value={product.value}>
-                    {product.label}
-                  </SelectItem>
-                ))}
+                {discoveredProducts.map((product, i) => {
+                  const ProductIcon = product.icon ? getIconByName(product.icon) : Package;
+                  const productColor = product.color || "#3B82F6";
+                  return (
+                    <SelectItem key={i} value={product.value}>
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${productColor}15`,
+                            color: productColor,
+                          }}
+                        >
+                          <ProductIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <span>{product.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
                 <SelectSeparator />
                 <SelectItem value="__custom__" className="text-blue-500">
                   <div className="flex items-center gap-2">
@@ -467,14 +647,50 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
               }
             }}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona un servicio..." />
+                {productName ? (() => {
+                  const selected = discoveredServices.find(s => s.value === productName);
+                  if (selected) {
+                    const ServiceIcon = selected.icon ? getIconByName(selected.icon) : Briefcase;
+                    const serviceColor = selected.color || "#10B981";
+                    return (
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${serviceColor}15`,
+                            color: serviceColor,
+                          }}
+                        >
+                          <ServiceIcon className="w-3 h-3" />
+                        </div>
+                        <span>{selected.label}</span>
+                      </div>
+                    );
+                  }
+                  return <SelectValue placeholder="Selecciona un servicio..." />;
+                })() : <SelectValue placeholder="Selecciona un servicio..." />}
               </SelectTrigger>
               <SelectContent>
-                {discoveredServices.map((service, i) => (
-                  <SelectItem key={i} value={service.value}>
-                    {service.label}
-                  </SelectItem>
-                ))}
+                {discoveredServices.map((service, i) => {
+                  const ServiceIcon = service.icon ? getIconByName(service.icon) : Briefcase;
+                  const serviceColor = service.color || "#10B981";
+                  return (
+                    <SelectItem key={i} value={service.value}>
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${serviceColor}15`,
+                            color: serviceColor,
+                          }}
+                        >
+                          <ServiceIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <span>{service.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
                 <SelectSeparator />
                 <SelectItem value="__custom__" className="text-blue-500">
                   <div className="flex items-center gap-2">

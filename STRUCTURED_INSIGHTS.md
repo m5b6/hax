@@ -148,3 +148,4 @@ return NextResponse.json({
 5. 🎯 **Marketing-Ready**: Insights organized for ad campaign creation
 
 
+

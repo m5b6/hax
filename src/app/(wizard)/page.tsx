@@ -6,11 +6,13 @@ import { WizardLayout } from "@/components/wizard/WizardLayout";
 import { StepIdentity } from "@/components/wizard/StepIdentity";
 import { StepStrategy } from "@/components/wizard/StepStrategy";
 import { StepFinal } from "@/components/wizard/StepFinal";
+import { useWizardStore } from "@/contexts/WizardStore";
 
 function WizardContent() {
   const searchParams = useSearchParams();
   const initialStep = parseInt(searchParams.get("step") || "0");
   const [step, setStep] = useState(initialStep);
+  const wizardStore = useWizardStore();
   
   // Update step if URL param changes
   useEffect(() => {
@@ -20,12 +22,18 @@ function WizardContent() {
     }
   }, [searchParams]);
 
-  const [data, setData] = useState<any>({});
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [businessName, setBusinessName] = useState("");
+  // Update metadata with current step
+  useEffect(() => {
+    wizardStore.setMetadata({
+      currentStep: step,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
-  const handleNext = (newData: any) => {
-    setData((prev: any) => ({ ...prev, ...newData }));
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const businessName = wizardStore.getInput("name") || "";
+
+  const handleNext = () => {
     setStep((prev) => prev + 1);
   };
 
@@ -33,17 +41,17 @@ function WizardContent() {
     {
       title: "Cuéntanos sobre tu negocio",
       subtitle: "Empecemos por lo básico para entender qué ofreces.",
-      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} onNameChange={setBusinessName} />,
+      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} />,
     },
     {
       title: "Estrategia de Campaña",
       subtitle: "Definamos a quién vamos a impactar.",
-      component: <StepStrategy onNext={handleNext} previousData={data} />,
+      component: <StepStrategy onNext={handleNext} />,
     },
     {
       title: "Tu Campaña Lista",
       subtitle: "Todo lo que necesitas para lanzar en Meta Ads.",
-      component: <StepFinal data={data} />,
+      component: <StepFinal />,
     },
   ];
 
