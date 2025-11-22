@@ -392,39 +392,25 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
         <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/50 shadow-inner">
           <button
             onClick={() => setType("producto")}
-            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden flex items-center justify-center gap-2 ${
+            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
               type === "producto"
-                ? "text-slate-900"
+                ? "text-slate-900 glass-input shadow-md"
                 : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            {type === "producto" && (
-              <motion.div 
-                layoutId="activeTab"
-                className="absolute inset-0 glass-input rounded-xl shadow-md"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-              />
-            )}
-            <Package className={`w-4 h-4 relative z-10 ${type === "producto" ? "text-slate-900" : "text-slate-400"}`} />
-            <span className="relative z-10">Producto</span>
+            <Package className={`w-4 h-4 ${type === "producto" ? "text-slate-900" : "text-slate-400"}`} />
+            <span>Producto</span>
           </button>
           <button
             onClick={() => setType("servicio")}
-            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden flex items-center justify-center gap-2 ${
+            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
               type === "servicio"
-                ? "text-slate-900"
+                ? "text-slate-900 glass-input shadow-md"
                 : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            {type === "servicio" && (
-              <motion.div 
-                layoutId="activeTab"
-                className="absolute inset-0 glass-input rounded-xl shadow-md"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-              />
-            )}
-            <Briefcase className={`w-4 h-4 relative z-10 ${type === "servicio" ? "text-slate-900" : "text-slate-400"}`} />
-            <span className="relative z-10">Servicio</span>
+            <Briefcase className={`w-4 h-4 ${type === "servicio" ? "text-slate-900" : "text-slate-400"}`} />
+            <span>Servicio</span>
           </button>
         </div>
 
