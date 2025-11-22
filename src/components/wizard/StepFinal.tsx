@@ -1,10 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Sparkles, Copy, Share2 } from "lucide-react";
+import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import CircularGallery from "./CircularGallery";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { StepTransitionLoader } from "./StepTransitionLoader";
+import type { RotatingLoaderItem } from "@/components/ui/rotating-loader";
+
+// Helper to get icon component by name from lucide-react
+const getIconByName = (iconName: string): LucideIcon => {
+  if (!iconName || typeof iconName !== 'string') {
+    return Sparkles;
+  }
+  
+  const exactMatch = LucideIcons[iconName as keyof typeof LucideIcons];
+  if (exactMatch && typeof exactMatch === 'function') {
+    return exactMatch as LucideIcon;
+  }
+  
+  const normalizedName = iconName.charAt(0).toUpperCase() + iconName.slice(1);
+  const caseMatch = LucideIcons[normalizedName as keyof typeof LucideIcons];
+  if (caseMatch && typeof caseMatch === 'function') {
+    return caseMatch as LucideIcon;
+  }
+  
+  return Sparkles;
+};
 
 export const StepFinal = () => {
   const wizardStore = useWizardStore();
@@ -19,6 +43,65 @@ export const StepFinal = () => {
     strategy: wizardStore.getAgentResponse("strategyAnswers"),
     urlAnalyses: wizardStore.getAgentResponse("urlAnalyses"),
   };
+  
+  // Get MCQ data for contextual loading
+  const mcqAnswers = wizardStore.getAgentResponse("mcqAnswers") || {};
+  const mcqQuestions = wizardStore.getAgentResponse("mcqQuestions") || [];
+  
+  // Extract selected options with their colors and icons
+  const selectedOptions = useMemo(() => {
+    const options: Array<{ text: string; color: string; icon: LucideIcon }> = [];
+    
+    mcqQuestions.forEach((question: any) => {
+      const selectedId = mcqAnswers[question.id];
+      if (selectedId && question.options) {
+        const option = question.options.find((opt: any) => opt.id === selectedId);
+        if (option) {
+          options.push({
+            text: option.text || option.id,
+            color: option.color || "#3B82F6",
+            icon: option.icon ? getIconByName(option.icon) : Sparkles,
+          });
+        }
+      }
+    });
+    
+    return options;
+  }, [mcqAnswers, mcqQuestions]);
+  
+  // Create loading items based on selected options
+  const loadingItems = useMemo((): RotatingLoaderItem[] => {
+    const defaultItems: RotatingLoaderItem[] = [
+      { text: "Redactando anuncios", icon: Sparkles },
+      { text: "Seleccionando públicos", icon: Target },
+      { text: "Optimizando creatividades", icon: Palette },
+    ];
+    
+    // If we have selected options, use their colors/icons for contextual messages
+    if (selectedOptions.length > 0) {
+      return [
+        { text: `Aplicando estilo ${selectedOptions[0]?.text || ""}`, icon: selectedOptions[0]?.icon || Sparkles },
+        { text: `Definiendo ritmo visual`, icon: selectedOptions[1]?.icon || Film },
+        { text: `Ajustando presencia humana`, icon: selectedOptions[2]?.icon || Users },
+        { text: "Generando copy final", icon: Sparkles },
+      ];
+    }
+    
+    return defaultItems;
+  }, [selectedOptions]);
+  
+  // Get colors for gradient (use selected option colors or defaults)
+  const gradientColors = useMemo(() => {
+    if (selectedOptions.length >= 2) {
+      return [
+        selectedOptions[0]?.color || "#3B82F6",
+        selectedOptions[1]?.color || "#8B5CF6",
+        selectedOptions[2]?.color || selectedOptions[0]?.color || "#FF0080",
+      ];
+    }
+    return ["#3B82F6", "#8B5CF6", "#FF0080"];
+  }, [selectedOptions]);
+  
   const [isGenerating, setIsGenerating] = useState(true);
 
   useEffect(() => {
@@ -30,25 +113,12 @@ export const StepFinal = () => {
 
   if (isGenerating) {
     return (
-      <div className="flex flex-col items-center justify-center py-28 space-y-10">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#40C9FF]/15 via-[#E81CFF]/15 to-[#FF9F0A]/15 blur-3xl rounded-full" />
-          <Sparkles className="w-24 h-24 text-[#40C9FF] animate-pulse relative z-10" strokeWidth={1.5} />
-        </div>
-        <div className="text-center space-y-4">
-          <h3 className="text-3xl font-semibold text-slate-900 tracking-tight">
-            Creando tu campaña...
-          </h3>
-          <p className="text-slate-500 max-w-sm mx-auto text-lg font-light leading-relaxed">
-            Redactando anuncios, seleccionando públicos y optimizando creatividades.
-          </p>
-        </div>
-        <div className="flex gap-4 pt-6">
-          <span className="w-3 h-3 bg-[#40C9FF] rounded-full animate-[bounce_1.4s_infinite] [animation-delay:-0.32s]" />
-          <span className="w-3 h-3 bg-[#E81CFF] rounded-full animate-[bounce_1.4s_infinite] [animation-delay:-0.16s]" />
-          <span className="w-3 h-3 bg-[#FF9F0A] rounded-full animate-[bounce_1.4s_infinite]" />
-        </div>
-      </div>
+      <StepTransitionLoader
+        items={loadingItems}
+        title="Creando tu campaña..."
+        subtitle={data.name ? `Personalizando para ${data.name}` : undefined}
+        gradientColors={gradientColors}
+      />
     );
   }
 

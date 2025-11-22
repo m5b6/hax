@@ -22,8 +22,16 @@ const analysisSchema = z.object({
     confidence: z.enum(["high", "medium", "low"]).describe("Nivel de confianza del insight"),
   })).max(10).describe("Lista de insights extraídos, máximo 10"),
   summary: z.string().describe("Resumen breve del análisis en 2-3 oraciones"),
-  concreteProducts: z.array(z.string()).max(10).describe("Lista de nombres específicos de productos que se venden (ej: 'iPhone 15 Pro', 'MacBook Air M2')"),
-  concreteServices: z.array(z.string()).max(10).describe("Lista de nombres específicos de servicios que se ofrecen (ej: 'Consultoría Fiscal', 'Diseño Web')"),
+  concreteProducts: z.array(z.object({
+    name: z.string().describe("Nombre específico del producto"),
+    icon: z.string().optional().describe("Nombre del icono de lucide-react que mejor representa el producto (ej: 'Package', 'Smartphone', 'Laptop')"),
+    color: z.string().optional().describe("Color hex que mejor representa el producto (ej: '#3B82F6', '#8B5CF6')"),
+  })).max(10).describe("Lista de productos específicos con nombre, icono opcional y color opcional"),
+  concreteServices: z.array(z.object({
+    name: z.string().describe("Nombre específico del servicio"),
+    icon: z.string().optional().describe("Nombre del icono de lucide-react que mejor representa el servicio (ej: 'Briefcase', 'Code', 'Users')"),
+    color: z.string().optional().describe("Color hex que mejor representa el servicio (ej: '#10B981', '#F59E0B')"),
+  })).max(10).describe("Lista de servicios específicos con nombre, icono opcional y color opcional"),
   primaryColor: z.string().nullable().describe("Hex o valor CSS para el color primario detectado"),
   secondaryColor: z.string().nullable().describe("Hex o valor CSS para el color secundario detectado"),
   brandLogoUrl: z.string().nullable().describe("URL del logo principal de la marca"),
@@ -53,9 +61,14 @@ IDENTIDAD VISUAL (PRIORIDAD MÁXIMA):
 
 EXTRACCIÓN DE PRODUCTOS Y SERVICIOS CONCRETOS:
 - **concreteProducts**: Busca nombres ESPECÍFICOS de productos (ej: "iPhone 15 Pro", "Zapatillas Nike Air Max", "Plan Premium")
+  - Para cada producto, asigna un **icon** (nombre de icono de lucide-react como 'Package', 'Smartphone', 'Laptop', 'Headphones', etc.)
+  - Asigna un **color** hex que represente visualmente el producto (usa colores vibrantes pero apropiados)
 - **concreteServices**: Busca nombres ESPECÍFICOS de servicios (ej: "Consultoría Fiscal", "Diseño Web Corporativo", "Coaching Ejecutivo")
+  - Para cada servicio, asigna un **icon** (nombre de icono de lucide-react como 'Briefcase', 'Code', 'Users', 'GraduationCap', etc.)
+  - Asigna un **color** hex que represente visualmente el servicio
 - Extrae hasta 10 de cada uno
 - Deben ser nombres reales encontrados en el sitio, NO categorías genéricas
+- Los iconos y colores son opcionales pero muy recomendados para mejorar la UI
 - Si no encuentras ninguno, deja el array vacío
 
 IDENTIDAD VISUAL:
@@ -74,7 +87,7 @@ PROCESO:
 FORMATO DE RESPUESTA:
 - Máximo 10 insights, cada uno con type, label (corto) y value (descriptivo)
 - Un summary general en 2-3 oraciones
-- Arrays de concreteProducts y concreteServices con nombres reales
+- Arrays de concreteProducts y concreteServices con objetos que incluyen name, icon (opcional) y color (opcional)
 - primaryColor, secondaryColor y brandLogoUrl (usa null solo si realmente no existen tras buscar exhaustivamente)
 - Prioriza información concreta y útil para campañas de marketing
 

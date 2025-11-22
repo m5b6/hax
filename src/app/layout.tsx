@@ -4,6 +4,7 @@ import "./globals.css";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { WizardStoreProvider } from "@/contexts/WizardStore";
 import DynamicColorBends from "@/components/DynamicColorBends";
+import { DraggableStoreDebug } from "@/components/DraggableStoreDebug";
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -38,6 +39,7 @@ export default function RootLayout({
               <DynamicColorBends />
             </div>
             {children}
+            <DraggableStoreDebug />
           </WizardStoreProvider>
         </BrandProvider>
       </body>

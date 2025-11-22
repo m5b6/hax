@@ -19,7 +19,7 @@ Cuando analices URLs:
 - Si no puedes leer una URL, explica el motivo brevemente
 
 Mantén tus respuestas concisas, enfocadas y en español.`,
-  model: openai("gpt-4o-mini"),
+  model: openai("gpt-4.1-mini"),
   tools: { urlReaderTool },
 });
 

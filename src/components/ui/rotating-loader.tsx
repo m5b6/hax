@@ -64,36 +64,44 @@ export function RotatingLoader({
 
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      {showSpinner && (
-        <div className={cn("relative", sizeClasses.spinner[spinnerSize])}>
-          <motion.div
-            className="absolute inset-0 rounded-full border-2 border-slate-200"
-            style={{
-              borderTopColor: "transparent",
-              borderRightColor: "#3B82F6",
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-          <div className="absolute inset-[2px] rounded-full bg-gradient-to-tr from-blue-400/20 to-purple-500/20" />
-        </div>
-      )}
-
-      <div className="relative overflow-hidden" style={{ minHeight: textSize === "sm" ? "1.5rem" : textSize === "md" ? "1.75rem" : "2rem" }}>
+      <div 
+        className="relative overflow-hidden"
+        style={{ 
+          minHeight: textSize === "sm" ? "1.5rem" : textSize === "md" ? "1.75rem" : "2rem",
+          maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+        }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={currentIndex}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -20, scale: 0.95, filter: "blur(4px)" }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
             className={cn(
               "flex items-center gap-2 whitespace-nowrap",
               sizeClasses.text[textSize],
-              "font-medium text-slate-800"
+              "font-medium text-slate-500"
             )}
           >
-            {Icon && <Icon className={cn("shrink-0 text-current", sizeClasses.icon[spinnerSize])} />}
+            {Icon && (
+              <motion.div
+                animate={{
+                  rotate: [0, -5, 5, -5, 5, 0],
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{
+                  duration: 0.6,
+                  repeat: Infinity,
+                  repeatDelay: 1.4,
+                  ease: "easeInOut",
+                }}
+                className="flex items-center justify-center"
+              >
+                <Icon className={cn("shrink-0 text-current", sizeClasses.icon[spinnerSize])} />
+              </motion.div>
+            )}
             <span>{currentItem.text}</span>
           </motion.div>
         </AnimatePresence>

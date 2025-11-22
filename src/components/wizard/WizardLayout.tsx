@@ -71,10 +71,10 @@ export const WizardLayout = ({
             
             <div className="glass-panel rounded-[2.5rem] p-6 sm:p-10 relative">
               {brandLogoUrl && (
-                <div className="absolute top-4 left-8 w-16 h-16 rounded-full bg-white shadow-xl shadow-slate-200/60 border border-white/70 flex items-center justify-center overflow-hidden z-30">
+                <div className="absolute top-4 left-8 w-16 h-16 rounded-full bg-white shadow-xl shadow-slate-200/60 border border-white/70 flex items-center justify-center overflow-hidden z-30 p-1">
                   {isInlineSvgLogo ? (
                     <div
-                      className="w-10 h-10 text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
+                      className="w-full h-full text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
                       dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
                     />
                   ) : (
@@ -83,7 +83,7 @@ export const WizardLayout = ({
                       <img
                         src={brandLogoUrl}
                         alt="Logo"
-                        className="w-12 h-12 object-contain"
+                        className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
                     </>

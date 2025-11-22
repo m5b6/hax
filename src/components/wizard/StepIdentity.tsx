@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
 import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil, Sparkles, Search, Eye } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InsightsChip } from "./InsightsChip";
 import { useBrand } from "@/contexts/BrandContext";
@@ -20,6 +21,8 @@ interface ProductServiceOption {
   value: string;
   label: string;
   source: string;
+  icon?: string;
+  color?: string;
 }
 
 const insightIcons: Record<Insight["type"], React.ComponentType<any>> = {
@@ -46,6 +49,28 @@ const insightColors: Record<Insight["type"], string> = {
   features: "from-yellow-500 to-orange-500",
   integrations: "from-cyan-500 to-blue-500",
   tech_stack: "from-slate-500 to-gray-600",
+};
+
+// Helper to get icon component by name from lucide-react
+const getIconByName = (iconName: string): React.ComponentType<any> => {
+  if (!iconName || typeof iconName !== 'string') {
+    return Package; // Default icon
+  }
+  
+  // Try exact match first
+  const exactMatch = LucideIcons[iconName as keyof typeof LucideIcons];
+  if (exactMatch) {
+    return exactMatch as React.ComponentType<any>;
+  }
+  
+  // Try case-insensitive match
+  const normalizedName = iconName.charAt(0).toUpperCase() + iconName.slice(1);
+  const caseMatch = LucideIcons[normalizedName as keyof typeof LucideIcons];
+  if (caseMatch) {
+    return caseMatch as React.ComponentType<any>;
+  }
+  
+  return Package; // Fallback
 };
 
 export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) => {
@@ -199,11 +224,23 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
       }
 
       if (data.concreteProducts && Array.isArray(data.concreteProducts)) {
-        const products: ProductServiceOption[] = data.concreteProducts.map((p: string) => ({
-          value: p,
-          label: p,
-          source: formattedUrl,
-        }));
+        const products: ProductServiceOption[] = data.concreteProducts.map((p: any) => {
+          // Handle both old format (string) and new format (object)
+          if (typeof p === 'string') {
+            return {
+              value: p,
+              label: p,
+              source: formattedUrl,
+            };
+          }
+          return {
+            value: p.name || p,
+            label: p.name || p,
+            source: formattedUrl,
+            icon: p.icon,
+            color: p.color,
+          };
+        });
         setDiscoveredProducts((prev) => {
           const combined = [...prev, ...products];
           const unique = combined.filter((item, index, self) => 
@@ -214,11 +251,23 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
       }
 
       if (data.concreteServices && Array.isArray(data.concreteServices)) {
-        const services: ProductServiceOption[] = data.concreteServices.map((s: string) => ({
-          value: s,
-          label: s,
-          source: formattedUrl,
-        }));
+        const services: ProductServiceOption[] = data.concreteServices.map((s: any) => {
+          // Handle both old format (string) and new format (object)
+          if (typeof s === 'string') {
+            return {
+              value: s,
+              label: s,
+              source: formattedUrl,
+            };
+          }
+          return {
+            value: s.name || s,
+            label: s.name || s,
+            source: formattedUrl,
+            icon: s.icon,
+            color: s.color,
+          };
+        });
         setDiscoveredServices((prev) => {
           const combined = [...prev, ...services];
           const unique = combined.filter((item, index, self) => 
@@ -439,7 +488,12 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
             }`}
           >
             <Package className={`w-4 h-4 ${type === "producto" ? "text-slate-900" : "text-slate-400"}`} />
-            <span>Producto</span>
+            <span>
+              Productos
+              {discoveredProducts.length > 0 && (
+                <span className="font-bold"> ({discoveredProducts.length})</span>
+              )}
+            </span>
           </button>
           <button
             onClick={() => setType("servicio")}
@@ -450,7 +504,12 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
             }`}
           >
             <Briefcase className={`w-4 h-4 ${type === "servicio" ? "text-slate-900" : "text-slate-400"}`} />
-            <span>Servicio</span>
+            <span>
+              Servicios
+              {discoveredServices.length > 0 && (
+                <span className="font-bold"> ({discoveredServices.length})</span>
+              )}
+            </span>
           </button>
         </div>
 
@@ -468,14 +527,50 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
               }
             }}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona un producto..." />
+                {productName ? (() => {
+                  const selected = discoveredProducts.find(p => p.value === productName);
+                  if (selected) {
+                    const ProductIcon = selected.icon ? getIconByName(selected.icon) : Package;
+                    const productColor = selected.color || "#3B82F6";
+                    return (
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${productColor}15`,
+                            color: productColor,
+                          }}
+                        >
+                          <ProductIcon className="w-3 h-3" />
+                        </div>
+                        <span>{selected.label}</span>
+                      </div>
+                    );
+                  }
+                  return <SelectValue placeholder="Selecciona un producto..." />;
+                })() : <SelectValue placeholder="Selecciona un producto..." />}
               </SelectTrigger>
               <SelectContent>
-                {discoveredProducts.map((product, i) => (
-                  <SelectItem key={i} value={product.value}>
-                    {product.label}
-                  </SelectItem>
-                ))}
+                {discoveredProducts.map((product, i) => {
+                  const ProductIcon = product.icon ? getIconByName(product.icon) : Package;
+                  const productColor = product.color || "#3B82F6";
+                  return (
+                    <SelectItem key={i} value={product.value}>
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${productColor}15`,
+                            color: productColor,
+                          }}
+                        >
+                          <ProductIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <span>{product.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
                 <SelectSeparator />
                 <SelectItem value="__custom__" className="text-blue-500">
                   <div className="flex items-center gap-2">
@@ -495,14 +590,50 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
               }
             }}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona un servicio..." />
+                {productName ? (() => {
+                  const selected = discoveredServices.find(s => s.value === productName);
+                  if (selected) {
+                    const ServiceIcon = selected.icon ? getIconByName(selected.icon) : Briefcase;
+                    const serviceColor = selected.color || "#10B981";
+                    return (
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${serviceColor}15`,
+                            color: serviceColor,
+                          }}
+                        >
+                          <ServiceIcon className="w-3 h-3" />
+                        </div>
+                        <span>{selected.label}</span>
+                      </div>
+                    );
+                  }
+                  return <SelectValue placeholder="Selecciona un servicio..." />;
+                })() : <SelectValue placeholder="Selecciona un servicio..." />}
               </SelectTrigger>
               <SelectContent>
-                {discoveredServices.map((service, i) => (
-                  <SelectItem key={i} value={service.value}>
-                    {service.label}
-                  </SelectItem>
-                ))}
+                {discoveredServices.map((service, i) => {
+                  const ServiceIcon = service.icon ? getIconByName(service.icon) : Briefcase;
+                  const serviceColor = service.color || "#10B981";
+                  return (
+                    <SelectItem key={i} value={service.value}>
+                      <div className="flex items-center gap-2.5">
+                        <div 
+                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: `${serviceColor}15`,
+                            color: serviceColor,
+                          }}
+                        >
+                          <ServiceIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <span>{service.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
                 <SelectSeparator />
                 <SelectItem value="__custom__" className="text-blue-500">
                   <div className="flex items-center gap-2">

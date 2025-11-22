@@ -21,8 +21,16 @@ const analysisSchema = z.object({
     confidence: z.enum(["high", "medium", "low"]),
   })).max(10),
   summary: z.string(),
-  concreteProducts: z.array(z.string()).max(10),
-  concreteServices: z.array(z.string()).max(10),
+  concreteProducts: z.array(z.object({
+    name: z.string(),
+    icon: z.string().optional(),
+    color: z.string().optional(),
+  })).max(10),
+  concreteServices: z.array(z.object({
+    name: z.string(),
+    icon: z.string().optional(),
+    color: z.string().optional(),
+  })).max(10),
   primaryColor: z.string().nullable(),
   secondaryColor: z.string().nullable(),
   brandLogoUrl: z.string().nullable(),

@@ -4,7 +4,7 @@ import * as LucideIcons from "lucide-react";
 import { ArrowRight, Sparkles, Check, ArrowLeft, Wand2, Search, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWizardStore } from "@/contexts/WizardStore";
-import { RotatingLoaderFull } from "./RotatingLoaderFull";
+import { StepTransitionLoader } from "./StepTransitionLoader";
 
 interface StepStrategyProps {
   onNext: () => void;
@@ -160,7 +160,7 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
 
   if (isAnalyzing || !mcqQuestions || !currentQuestion) {
     return (
-      <RotatingLoaderFull
+      <StepTransitionLoader
         items={[
           { text: "Cargando preguntas", icon: Search },
           { text: "Generando opciones", icon: Wand2 },
@@ -227,13 +227,6 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
               {currentQuestion.question}
             </h2>
             
-            {/* Show description from first option's whyItWorks as insight if available */}
-            {currentQuestion.options?.[0]?.whyItWorks && (
-              <div className="flex items-start gap-2 text-slate-500 text-sm leading-relaxed bg-slate-50/80 p-3 rounded-xl border border-slate-100/50">
-                <Sparkles className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                <p><span className="font-medium text-slate-700">Contexto:</span> Estas opciones están personalizadas para tu negocio.</p>
-              </div>
-            )}
           </div>
 
           <div className="space-y-3">
