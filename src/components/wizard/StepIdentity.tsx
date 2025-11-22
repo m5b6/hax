@@ -1,3 +1,4 @@
+import { processDataStream } from "@ai-sdk/ui-utils";
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -104,82 +105,55 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       });
 
       if (!response.ok) throw new Error("Failed to analyze URL");
+      if (!response.body) throw new Error("No response body");
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) throw new Error("No response body");
-
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-
-          console.log("[Stream] Raw line:", line);
-
-          if (line.startsWith("6:")) {
-            console.log("[Stream] Tool call chunk:", line.slice(2));
-            try {
-              const toolCallData = JSON.parse(line.slice(2));
-              console.log("[Stream] Parsed tool call:", toolCallData);
-              if (toolCallData && toolCallData.toolCallId) {
-                urlToolStatus.set(toolCallData.toolCallId, {
-                  toolName: toolCallData.toolName || "tool",
-                  status: "calling",
-                });
-                setToolStatus(new Map(urlToolStatus));
-              }
-            } catch (e) {
-              console.error("[Stream] Error parsing tool call:", e);
-            }
-          } else if (line.startsWith("7:")) {
-            console.log("[Stream] Tool result chunk:", line.slice(2));
-            try {
-              const toolResultData = JSON.parse(line.slice(2));
-              console.log("[Stream] Parsed tool result:", toolResultData);
-              if (toolResultData && toolResultData.toolCallId) {
-                const existing = urlToolStatus.get(toolResultData.toolCallId);
-                if (existing) {
-                  urlToolStatus.set(toolResultData.toolCallId, {
-                    ...existing,
-                    status: "complete",
-                  });
-                  setToolStatus(new Map(urlToolStatus));
-                }
-              }
-            } catch (e) {
-              console.error("[Stream] Error parsing tool result:", e);
-            }
-          } else if (line.startsWith("8:")) {
-            console.log("[Stream] Structured output chunk:", line.slice(2));
-            try {
-              const parsed = JSON.parse(line.slice(2));
-              console.log("[Stream] Parsed structured output:", parsed);
-              if (parsed && parsed.insights && Array.isArray(parsed.insights)) {
-                console.log("[Stream] Updating insights:", parsed.insights);
-                setUrlAnalyses((prev) => {
-                  return new Map(prev).set(url, {
-                    url,
-                    insights: parsed.insights,
-                  });
-                });
-              }
-            } catch (e) {
-              console.error("[Stream] Error parsing structured output:", e, "Raw:", line.slice(2));
-            }
-          } else {
-            console.log("[Stream] Unknown chunk type:", line.substring(0, 10));
+      let fullJson = "";
+      await processDataStream({
+        stream: response.body,
+        onTextPart: (text) => { 
+          fullJson += text;
+        },
+        onToolCallStreamingStartPart: ({ toolCallId, toolName }) => {
+          console.log("[Stream] Tool call start:", toolName);
+          urlToolStatus.set(toolCallId, {
+            toolName: toolName || "tool",
+            status: "calling",
+          });
+          setToolStatus(new Map(urlToolStatus));
+        },
+        onToolCallPart: ({ toolCallId, toolName }) => {
+          console.log("[Stream] Tool call:", toolName);
+          urlToolStatus.set(toolCallId, {
+            toolName: toolName || "tool",
+            status: "calling",
+          });
+          setToolStatus(new Map(urlToolStatus));
+        },
+        onToolResultPart: ({ toolCallId, result }) => {
+          console.log("[Stream] Tool result:", result);
+          const existing = urlToolStatus.get(toolCallId);
+          if (existing) {
+            urlToolStatus.set(toolCallId, {
+              ...existing,
+              status: "complete",
+            });
+            setToolStatus(new Map(urlToolStatus));
           }
-        }
-      }
+        },
+        onMessageAnnotationsPart: (annotations) => {
+          console.log("[Stream] Annotations:", annotations);
+          const parsed = annotations[0] as any;
+          if (parsed && parsed.insights && Array.isArray(parsed.insights)) {
+            console.log("[Stream] Updating insights:", parsed.insights);
+            setUrlAnalyses((prev) => {
+              return new Map(prev).set(url, {
+                url,
+                insights: parsed.insights,
+              });
+            });
+          }
+        },
+      });
     } catch (error) {
       console.error("Error analyzing URL:", error);
     } finally {
