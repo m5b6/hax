@@ -126,6 +126,7 @@ export default function ColorBends({
   noise = 0.1,
   chromatic = false
 }: ColorBendsProps) {
+  const hasColors = (colors || []).filter(Boolean).length > 0;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -304,6 +305,12 @@ export default function ColorBends({
     };
   }, []);
 
-  return <div ref={containerRef} className={`color-bends ${chromatic ? 'chromatic' : ''} ${className || ''}`} style={style} />;
+  return (
+    <div
+      ref={containerRef}
+      className={`color-bends ${chromatic ? 'chromatic' : ''} ${hasColors ? 'visible' : 'hidden'} ${className || ''}`}
+      style={style}
+    />
+  );
 }
 

@@ -476,7 +476,8 @@ export default function DomeGallery({
     overlay.style.transition = `transform ${enlargeTransitionMs}ms ease, opacity ${enlargeTransitionMs}ms ease`;
 
     const rawSrc = parent.dataset.src || (el.querySelector('img') as HTMLImageElement)?.src || '';
-    const isVideo = videoUrl && (videoUrl.match(/\.(mp4|webm|mov|avi)$/i) || videoUrl.includes('cloudfront.net') || videoUrl.includes('video'));
+    const hasVideoElement = el.querySelector('video') !== null;
+    const isVideo = hasVideoElement && videoUrl && (videoUrl.match(/\.(mp4|webm|mov|avi)$/i) || videoUrl.includes('cloudfront.net') || videoUrl.includes('video'));
     
     if (isVideo && videoUrl) {
       const video = document.createElement('video');
@@ -743,13 +744,14 @@ export default function DomeGallery({
         <div className="stage">
           <div ref={sphereRef} className="sphere">
             {items.map((it, i) => {
-              const isVideo = videoUrl && (videoUrl.match(/\.(mp4|webm|mov|avi)$/i) || videoUrl.includes('cloudfront.net') || videoUrl.includes('video'));
-              const displaySrc = videoUrl ? (isVideo ? videoUrl : PLACEHOLDER_IMAGE) : it.src;
+              const isVideo = videoUrl && i === 0 && (videoUrl.match(/\.(mp4|webm|mov|avi)$/i) || videoUrl.includes('cloudfront.net') || videoUrl.includes('video'));
+              const shouldShowImage = !isVideo && (!videoUrl || i <= 3);
+              const displaySrc = shouldShowImage ? it.src : PLACEHOLDER_IMAGE;
               return (
                 <div
                   key={`${it.x},${it.y},${i}`}
                   className="item"
-                  data-src={videoUrl || it.src}
+                  data-src={isVideo ? videoUrl : it.src}
                   data-offset-x={it.x}
                   data-offset-y={it.y}
                   data-size-x={it.sizeX}
