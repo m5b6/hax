@@ -2,14 +2,18 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon } from "lucide-react";
+import { Instagram } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import CircularGallery from "./CircularGallery";
+import DomeGallery from "./DomeGallery";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { useBrand } from "@/contexts/BrandContext";
 import { StepTransitionLoader } from "./StepTransitionLoader";
 import { RotatingLoader } from "@/components/ui/rotating-loader";
 import type { RotatingLoaderItem } from "@/components/ui/rotating-loader";
+
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0iI2NjYyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjwvdGV4dD48L3N2Zz4=';
 
 // Helper to get icon component by name from lucide-react
 const getIconByName = (iconName: string): LucideIcon => {
@@ -33,6 +37,7 @@ const getIconByName = (iconName: string): LucideIcon => {
 
 export const StepFinal = () => {
   const wizardStore = useWizardStore();
+  const { brandLogoUrl } = useBrand();
   
   // Get all data from store
   const data = {
@@ -237,6 +242,7 @@ export const StepFinal = () => {
   // Video generation state
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoResult, setVideoResult] = useState<string | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
   const hasGeneratedVideoRef = useRef(false);
 
   // Trigger video generation when prompt is ready
@@ -247,11 +253,13 @@ export const StepFinal = () => {
     const existingVideo = wizardStore.getAgentResponse("videoResult");
     if (existingVideo) {
       setVideoResult(existingVideo);
+      setShowGallery(true);
       return;
     }
 
     hasGeneratedVideoRef.current = true;
     setIsGeneratingVideo(true);
+    setShowGallery(true);
 
     const generateVideo = async () => {
       try {
@@ -294,12 +302,14 @@ export const StepFinal = () => {
         
         if (data.output && Array.isArray(data.output) && data.output.length > 0) {
             const videoUrl = data.output[0];
-            setVideoResult(videoUrl);
-            wizardStore.setAgentResponse("videoResult", videoUrl);
+            setTimeout(() => {
+              setVideoResult(videoUrl);
+              wizardStore.setAgentResponse("videoResult", videoUrl);
+              setIsGeneratingVideo(false);
+            }, 5000);
         }
       } catch (error) {
         console.error("Error generating video:", error);
-      } finally {
         setIsGeneratingVideo(false);
       }
     };
@@ -480,7 +490,7 @@ export const StepFinal = () => {
                             <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
                         </div>
                     )}
-                    <span>Video Generado</span>
+                    <span>Contenido Generado</span>
                 </div>
                 {videoResult && (
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
@@ -505,14 +515,15 @@ export const StepFinal = () => {
                     className="text-slate-500"
                   />
                 </div>
-              ) : videoResult ? (
-                 <div className="relative w-full aspect-[9/16] bg-black">
-                    <video 
-                        src={videoResult} 
-                        controls 
-                        autoPlay 
-                        loop 
-                        className="w-full h-full object-cover"
+              ) : showGallery ? (
+                 <div className="w-full h-[500px] bg-white">
+                    <DomeGallery
+                      images={Array.from({ length: 75 }, () => PLACEHOLDER_IMAGE)}
+                      videoUrl={videoResult || undefined}
+                      logoUrl={brandLogoUrl}
+                      name={data.name}
+                      grayscale={false}
+                      segments={15}
                     />
                  </div>
               ) : (
@@ -520,6 +531,84 @@ export const StepFinal = () => {
                     No se pudo generar el video.
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Connecting Flow - Active Data Link to Upload Step */}
+      {!isGenerating && displayPrompt && videoResult && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-center -my-1 relative z-0"
+        >
+          <div className="relative flex flex-col items-center h-16">
+            {/* The Beam */}
+            <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
+              <motion.div
+                className="absolute top-0 left-0 w-full bg-gradient-to-b from-pink-500 via-purple-500 to-blue-500"
+                initial={{ height: "0%" }}
+                animate={{ height: "100%" }}
+                transition={{ duration: 0.8, ease: "circOut", delay: 0.2 }}
+              />
+              {/* Light Pulse */}
+              <motion.div
+                className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
+                animate={{ top: ["-100%", "200%"] }}
+                transition={{ 
+                  duration: 1.5, 
+                  repeat: Infinity, 
+                  ease: "linear",
+                  repeatDelay: 0.5 
+                }}
+              />
+            </div>
+
+            {/* Connection Nodes */}
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.3 }}
+              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10" 
+            />
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.9 }}
+              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10" 
+            />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Upload to Instagram Step */}
+      {!isGenerating && displayPrompt && videoResult && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
+            style={{
+              boxShadow: '0 10px 30px -5px rgba(64, 201, 255, 0.2), 0 0 0 1px rgba(64, 201, 255, 0.1)'
+            }}
+          >
+            <CardContent className="p-6">
+              <Button
+                onClick={() => {
+                  window.open('https://www.instagram.com/create/select/', '_blank');
+                }}
+                className="w-full px-8 py-6 text-base font-medium text-white rounded-full flex items-center justify-center gap-2"
+                style={{
+                  background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                  boxShadow: '0 4px 20px rgba(188, 24, 136, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <Instagram className="w-5 h-5" />
+                Subir a Instagram
+              </Button>
             </CardContent>
           </Card>
         </motion.div>
