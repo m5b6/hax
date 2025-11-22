@@ -3,12 +3,13 @@
 import { motion } from "framer-motion";
 import { useWizardStore } from "@/contexts/WizardStore";
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 
 export function DraggableStoreDebug() {
   const store = useWizardStore();
   const [isMinimized, setIsMinimized] = useState(false);
   const [position, setPosition] = useState({ x: 20, y: 20 });
+  const [copied, setCopied] = useState(false);
 
   // Load position from localStorage on mount
   useEffect(() => {
@@ -51,6 +52,24 @@ export function DraggableStoreDebug() {
     return String(value);
   };
 
+  const handleCopy = async () => {
+    const storeData = {
+      inputs: store.getAllInputs(),
+      agentResponses: store.getAllAgentResponses(),
+      metadata: store.data.metadata,
+    };
+    
+    const jsonString = JSON.stringify(storeData, null, 2);
+    
+    try {
+      await navigator.clipboard.writeText(jsonString);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
   return (
     <motion.div
       drag
@@ -66,6 +85,17 @@ export function DraggableStoreDebug() {
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5 cursor-grab active:cursor-grabbing">
           <h3 className="text-sm font-semibold text-white/90">Store Debug</h3>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+              title="Copy store data to clipboard"
+            >
+              {copied ? (
+                <Check className="w-4 h-4 text-green-400" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
             <button
               onClick={() => setIsMinimized(!isMinimized)}
               className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white"
