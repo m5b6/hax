@@ -48,7 +48,7 @@ CATEGORÍAS DE INSIGHTS (extrae hasta 10, prioriza lo más relevante):
 10. **tech_stack**: Tecnologías que usan o mencionan
 
 IDENTIDAD VISUAL (PRIORIDAD MÁXIMA):
-- **primaryColor** y **secondaryColor**: SIEMPRE identifica los dos colores principales de la marca. Prioriza detectar combinaciones hex/RGB reales usadas en el sitio (botones, fondos, gradientes, theme-color). Si no los encuentras, vuelve a intentar con otros estilos. Solo responde null como último recurso.
+- **primaryColor** y **secondaryColor**: SIEMPRE identifica los dos colores principales de la marca. Prioriza detectar combinaciones hex/RGB reales usadas en el sitio (botones, fondos, gradientes, theme-color). Evita colores blancos o casi blancos (#fff, #ffffff, #fefefe) salvo que sea literalmente la identidad oficial; si ves mucho blanco busca el siguiente color predominante en CTAs o acentos. Si no los encuentras, vuelve a intentar con otros estilos. Solo responde null como último recurso.
 - **brandLogoUrl**: Debes localizar el LOGO principal (no cualquier imagen). Busca meta og:logo, og:image, itemprop=logo, imágenes con alt o nombre que contenga “logo”, SVGs de logotipos, favicons de alta resolución. Evita mockups, fotos o ilustraciones. Si hay varios, elige el más representativo de la marca. Solo si no existe, devuelve null.
 
 EXTRACCIÓN DE PRODUCTOS Y SERVICIOS CONCRETOS:

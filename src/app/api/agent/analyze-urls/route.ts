@@ -26,6 +26,7 @@ const analysisSchema = z.object({
   primaryColor: z.string().nullable(),
   secondaryColor: z.string().nullable(),
   brandLogoUrl: z.string().nullable(),
+  images: z.array(z.string()).max(50).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -64,6 +65,7 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
 
     const toolResults = result.toolResults || [];
     let colors: string[] = [];
+    let images: string[] = [];
     let primaryColor: string | null = parsedOutput.primaryColor ?? null;
     let secondaryColor: string | null = parsedOutput.secondaryColor ?? null;
     let brandLogoUrl: string | null = parsedOutput.brandLogoUrl ?? null;
@@ -71,7 +73,7 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
     for (const toolResult of toolResults) {
       if (toolResult.result && typeof toolResult.result === 'object') {
         const resultObj = toolResult.result as any;
-        const extractedColors = (toolResult.result as any).colors;
+        const extractedColors = resultObj.colors;
         if (Array.isArray(extractedColors) && extractedColors.length > 0) {
           colors = extractedColors;
         }
@@ -83,6 +85,9 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
         }
         if (!brandLogoUrl && typeof resultObj.logoUrl === 'string') {
           brandLogoUrl = resultObj.logoUrl;
+        }
+        if (Array.isArray(resultObj.images)) {
+          images = images.concat(resultObj.images);
         }
       }
     }
@@ -101,6 +106,7 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
         primaryColor,
         secondaryColor,
         brandLogoUrl,
+        images: Array.from(new Set(images)).slice(0, 12),
         concreteProducts: parsedOutput.concreteProducts || [],
         concreteServices: parsedOutput.concreteServices || [],
       }),

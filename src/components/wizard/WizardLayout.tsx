@@ -1,6 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBrand } from "@/contexts/BrandContext";
+import { FloatingImageBubbles } from "@/components/FloatingImageBubbles";
 
 interface WizardLayoutProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ export const WizardLayout = ({
       </div>
 
       <main className="w-full max-w-2xl mx-auto relative z-10">
+        <FloatingImageBubbles />
         <AnimatePresence mode="wait" custom={currentStep}>
           <motion.div
             key={currentStep}
@@ -69,7 +71,7 @@ export const WizardLayout = ({
             
             <div className="glass-panel rounded-[2.5rem] p-6 sm:p-10 relative">
               {brandLogoUrl && (
-                <div className="absolute -top-8 left-8 w-16 h-16 rounded-full bg-white shadow-xl shadow-slate-200/60 border border-white/70 flex items-center justify-center overflow-hidden z-30">
+                <div className="absolute top-4 left-8 w-16 h-16 rounded-full bg-white shadow-xl shadow-slate-200/60 border border-white/70 flex items-center justify-center overflow-hidden z-30">
                   {isInlineSvgLogo ? (
                     <div
                       className="w-10 h-10 text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"

@@ -2,6 +2,33 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import * as cheerio from "cheerio";
 
+const hexToRgb = (hex: string) => {
+  const normalized = hex.replace("#", "");
+  const value = normalized.length === 3
+    ? normalized.split("").map((c) => c + c).join("")
+    : normalized;
+  const int = parseInt(value, 16);
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255,
+  };
+};
+
+const isNearWhite = (color: string) => {
+  if (!color || !color.startsWith("#")) return false;
+  const hex = color.length === 4
+    ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+    : color;
+  try {
+    const { r, g, b } = hexToRgb(hex);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.9;
+  } catch {
+    return false;
+  }
+};
+
 const extractedDataSchema = z.object({
   type: z.enum([
     "style",
@@ -90,7 +117,7 @@ export const urlReaderTool = createTool({
       
       const colorRegex = /#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}|rgba?\([^)]+\)/g;
       const allStyles = inlineStyles + ' ' + styleAttributes;
-      const colors = [...new Set(allStyles.match(colorRegex) || [])].slice(0, 10);
+      const rawColors = [...new Set(allStyles.match(colorRegex) || [])].slice(0, 20);
 
       const fontRegex = /(?:https?:)?\/\/[^)]+\.(?:woff2?|ttf|eot|otf)/g;
       const fonts = [...new Set(allStyles.match(fontRegex) || [])].map(font => 
@@ -98,9 +125,27 @@ export const urlReaderTool = createTool({
       );
 
       const themeColor = $('meta[name="theme-color"]').attr('content');
-      if (themeColor && !colors.includes(themeColor)) {
-        colors.unshift(themeColor);
+      if (themeColor && !rawColors.includes(themeColor)) {
+        rawColors.unshift(themeColor);
       }
+
+      const vividColors = rawColors.filter((color) => !(color.startsWith("#") && isNearWhite(color)));
+      const prioritizedColors = vividColors.length > 0 ? vividColors : rawColors;
+
+      const selectSecondaryColor = (list: string[], primary: string | null) => {
+        return list.find((color) => color !== primary && !(color.startsWith("#") && isNearWhite(color))) ||
+               list.find((color) => color !== primary) ||
+               null;
+      };
+
+      let primaryColor = prioritizedColors[0] || null;
+      if (primaryColor && primaryColor.startsWith("#") && isNearWhite(primaryColor)) {
+        primaryColor = prioritizedColors.find((color) => !(color.startsWith("#") && isNearWhite(color))) || null;
+      }
+      if ((!primaryColor || (primaryColor.startsWith("#") && isNearWhite(primaryColor))) && themeColor && !(themeColor.startsWith("#") && isNearWhite(themeColor))) {
+        primaryColor = themeColor;
+      }
+      const secondaryColor = selectSecondaryColor(prioritizedColors, primaryColor);
 
       const inlineSvgLogo = $('svg[aria-label*="logo" i], svg[id*="logo" i], svg[class*="logo" i]').first();
       const svgTitleLogo = $('svg title:contains("logo")').first().parent('svg');
@@ -131,10 +176,27 @@ export const urlReaderTool = createTool({
         .filter(Boolean)
         .map(src => resolveUrl(src as string));
 
-      const logoUrl = logoImageCandidates.find(Boolean) || inlineSvgMarkup || null;
+      const heroKeywords = ["hero", "banner", "bg", "background", "cover", "slider", "header"];
+      const logoKeywords = ["logo", "logotipo", "isologo", "isotipo", "imagotipo"];
 
-      const primaryColor = colors[0] || themeColor || null;
-      const secondaryColor = colors.find((color) => color !== primaryColor) || null;
+      const scoredLogoCandidates = logoImageCandidates.map((candidate) => {
+        const lower = candidate.toLowerCase();
+        let score = 0;
+        logoKeywords.forEach((kw) => {
+          if (lower.includes(kw)) score += 3;
+        });
+        heroKeywords.forEach((kw) => {
+          if (lower.includes(kw)) score -= 2;
+        });
+        if (lower.includes("icon")) score += 1;
+        return { url: candidate, score };
+      });
+
+      const bestLogo = scoredLogoCandidates
+        .sort((a, b) => b.score - a.score)
+        .find((candidate) => candidate.score > 0)?.url;
+
+      const logoUrl = bestLogo || inlineSvgMarkup || null;
 
       $('script, style, nav, footer, header').remove();
 
@@ -162,11 +224,11 @@ export const urlReaderTool = createTool({
       const extractedData = [];
       const contentLower = cleanContent.toLowerCase();
       
-      if (colors.length > 0) {
+      if (prioritizedColors.length > 0) {
         extractedData.push({
           type: "style" as const,
           label: "Paleta de colores",
-          value: `${colors.length} colores principales: ${colors.slice(0, 3).join(', ')}`,
+          value: `${prioritizedColors.length} colores principales: ${prioritizedColors.slice(0, 3).join(', ')}`,
           confidence: "high" as const,
         });
       }
@@ -235,7 +297,7 @@ export const urlReaderTool = createTool({
         images,
         scripts,
         fonts,
-        colors,
+        colors: prioritizedColors.slice(0, 10),
         primaryColor,
         secondaryColor,
         logoUrl,

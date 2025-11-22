@@ -35,6 +35,7 @@ interface URLAnalysis {
   logoUrl?: string | null;
   primaryColor?: string | null;
   secondaryColor?: string | null;
+  images?: string[];
 }
 
 const insightIcons: Record<InsightType, React.ComponentType<any>> = {
@@ -64,7 +65,7 @@ const insightColors: Record<InsightType, string> = {
 };
 
 export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepIdentityProps) => {
-  const { setBrandColors, setBrandLogoUrl: setGlobalBrandLogo } = useBrand();
+  const { setBrandColors, setBrandLogoUrl: setGlobalBrandLogo, setBrandImages, brandImages } = useBrand();
   const [name, setName] = useState("");
   const [identity, setIdentity] = useState("");
   const [urls, setUrls] = useState<string[]>([""]);
@@ -142,6 +143,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
           logoUrl: data.brandLogoUrl ?? null,
           primaryColor: data.primaryColor ?? null,
           secondaryColor: data.secondaryColor ?? null,
+          images: Array.isArray(data.images) ? data.images : [],
         }));
       }
 
@@ -158,6 +160,19 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       if (data.brandLogoUrl) {
         setBrandLogoUrl(data.brandLogoUrl);
         setGlobalBrandLogo(data.brandLogoUrl);
+      }
+
+      if (Array.isArray(data.images) && data.images.length > 0) {
+        const sanitizedImages = data.images
+          .filter((img: string) => typeof img === "string" && img.trim().length > 0)
+          .map((img: string) => img.trim());
+        if (sanitizedImages.length > 0) {
+          setBrandImages((prev) => {
+            const merged = [...prev, ...sanitizedImages];
+            const unique = merged.filter((img, idx) => merged.indexOf(img) === idx);
+            return unique.slice(0, 8);
+          });
+        }
       }
 
       if (data.concreteProducts && Array.isArray(data.concreteProducts)) {
@@ -232,6 +247,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
         productName, 
         urlAnalyses: Array.from(urlAnalyses.values()),
         brandLogoUrl,
+        brandImages,
       });
     }
   };
