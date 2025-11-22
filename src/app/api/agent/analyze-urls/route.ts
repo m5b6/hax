@@ -51,12 +51,9 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
 
     const stream = await agent.stream(prompt, {
       format: "aisdk",
-      structuredOutput: {
-        schema: analysisSchema,
-      },
     });
 
-    return stream.toTextStreamResponse();
+    return stream.toDataStreamResponse();
   } catch (error) {
     console.error("Error analyzing URLs:", error);
     return new Response(
