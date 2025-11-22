@@ -81,10 +81,17 @@ A medida que el modelo streaméa su respuesta:
 
 **Comportamiento visual:**
 
-- Cada nueva pregunta o resultado entra con una animación corta, fluida, tipo “fade + scale” o “slide + blur”.
-- Cuando los agentes definen una “identidad de marca” (colores, tono), la interfaz se **tintea** con esa identidad:
-  - Gradiente de fondo más personalizado.
-  - Acentos de color en botones y resaltados.
+- Cada nueva pregunta o resultado entra con una animación corta, fluida, tipo "fade + scale" o "slide + blur".
+- Cuando se analizan URLs, el input obtiene un **ring glow** sutil y el fondo se anima con `ColorBends`
+- Cuando los agentes descubren colores de marca, la interfaz se **tintea** dinámicamente con esa identidad:
+  - El componente `ColorBends` cambia de cromático a colores de marca específicos
+  - Gradiente de fondo totalmente personalizado según la marca del usuario
+  - Transición suave entre estados (sin colores → analizando → colores personalizados)
+  - Acentos de color en botones y resaltados
+- Estados visuales de análisis:
+  - **Analizando**: Ring azul-púrpura giratorio con pulsos expandiéndose
+  - **Completado**: Checkmark verde en círculo con sombra brillante
+  - **Transición**: Suave fade entre estados con AnimatePresence
 - Evitar saturación: máximo 1–2 gradientes relevantes por pantalla, mucho negro/oscuro y aire.
 
 ---
@@ -120,11 +127,16 @@ A medida que el modelo streaméa su respuesta:
 - Priorizar respuestas que se puedan **usar tal cual** en campañas reales, sin mucha edición manual.
 
 ## Agent streaming guidelines
-**SIEMPRE usa streaming para todos los agentes** — es fundamental para la experiencia:
+**Usa streaming para agentes conversacionales** — es fundamental para la experiencia interactiva:
+
+### Cuándo usar streaming vs. generate:
+- **Streaming (`agent.stream()`)**: Ideal para conversaciones interactivas, contenido largo, o cuando se necesita retroalimentación progresiva
+- **Generate (`agent.generate()`)**: Para análisis de datos estructurados, extracción de información, o cuando se necesita la respuesta completa antes de procesarla (ej: análisis de URLs)
+
+### Para agentes con streaming:
 
 1. **Configuración del agente**:
-   - Usar `agent.stream()` en lugar de `agent.generate()`
-   - Configurar con `format: "aisdk"` para compatibilidad con AI SDK v5
+   - Usar `agent.stream()` con `format: "aisdk"` para compatibilidad con AI SDK v5
    - Retornar `stream.toDataStreamResponse()` desde API routes
 
 2. **API Routes**:
@@ -136,32 +148,31 @@ A medida que el modelo streaméa su respuesta:
    - Usar `fetch` con `ReadableStream` para procesar chunks
    - Decodificar con `TextDecoder` y parsear líneas que empiezan con `"0:"`
    - Mostrar contenido progresivamente a medida que llega
-   - Agregar indicadores visuales de "pensando" (iconos animados como Brain, Sparkles)
+   - Agregar indicadores visuales elegantes (anillos giratorios con gradientes, pulsos de luz)
 
-4. **UX durante streaming**:
-   - Indicador de loading animado (Brain pulsando, Sparkles rotando)
+4. **UX durante streaming/analyzing**:
+   - **Indicadores de estado elegantes**:
+     - Anillos animados con gradientes (blue-purple) para loading
+     - Checkmark en círculo verde con sombra para completado
+     - Rings con pulsos expandiéndose para estado activo
+     - Transiciones de input: ring glow sutil cuando está analizando
+   - **EVITAR**: Iconos literales (Brain, Sparkles, etc) que se ven fuera de lugar
+   - **USAR**: Formas geométricas abstractas con gradientes cromáticos
    - Texto apareciendo progresivamente en tiempo real
    - Deshabilitar inputs durante el streaming para evitar llamadas duplicadas
    - Mostrar resultados en contenedores con gradientes suaves (glass panels)
 
-5. **Ejemplo de implementación**:
-```typescript
-const stream = await agent.stream(prompt, { format: "aisdk" });
-return stream.toUIMessageStreamResponse();
+### Para agentes con generate:
 
-const reader = response.body?.getReader();
-const decoder = new TextDecoder();
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  const chunk = decoder.decode(value);
-  const lines = chunk.split("\n");
-  for (const line of lines) {
-    if (line.startsWith("0:")) {
-      setContent((prev) => prev + line.slice(2));
-    }
-  }
-}
+1. **Configuración**:
+   - Usar `agent.generate()` con schema de salida (`output: schema`)
+   - Retornar JSON estructurado
+
+2. **Ejemplo**:
+```typescript
+const result = await agent.generate(prompt, { output: schema });
+const parsed = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
+return new Response(JSON.stringify(parsed));
 ```
 
 ---

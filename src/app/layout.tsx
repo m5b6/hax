@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
-import ColorBends from "@/components/ColorBends";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const instrumentSerif = Instrument_Serif({ 
@@ -23,15 +22,6 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased text-slate-900 min-h-screen overflow-x-hidden selection:bg-blue-100 selection:text-blue-900`}>
-        <ColorBends 
-          transparent={true}
-          colors={['#40C9FF', '#E81CFF', '#FF9F0A']}
-          speed={0.2}
-          frequency={1}
-          warpStrength={1}
-          mouseInfluence={1}
-          parallax={0.5}
-        />
         {children}
       </body>
     </html>

@@ -38,6 +38,7 @@
     "@ai-sdk/openai": "^2.0.28",
     "@mastra/core": "latest",
     "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "cheerio": "^1.0.0",
     "ogl": "^1.0.11",

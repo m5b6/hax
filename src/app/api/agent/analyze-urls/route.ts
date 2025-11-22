@@ -21,6 +21,8 @@ const analysisSchema = z.object({
     confidence: z.enum(["high", "medium", "low"]),
   })).max(10),
   summary: z.string(),
+  concreteProducts: z.array(z.string()).max(10),
+  concreteServices: z.array(z.string()).max(10),
 });
 
 export async function POST(req: NextRequest) {
@@ -49,11 +51,36 @@ export async function POST(req: NextRequest) {
 
 Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados.`;
 
-    const stream = await agent.stream(prompt, {
-      format: "aisdk",
+    const result = await agent.generate(prompt, {
+      output: analysisSchema,
     });
 
-    return stream.toDataStreamResponse();
+    const parsedOutput = typeof result.text === 'string' 
+      ? JSON.parse(result.text) 
+      : result.text;
+
+    const toolResults = result.toolResults || [];
+    let colors: string[] = [];
+    
+    for (const toolResult of toolResults) {
+      if (toolResult.result && typeof toolResult.result === 'object' && 'colors' in toolResult.result) {
+        const extractedColors = (toolResult.result as any).colors;
+        if (Array.isArray(extractedColors) && extractedColors.length > 0) {
+          colors = extractedColors;
+          break;
+        }
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        ...parsedOutput,
+        colors: colors.slice(0, 2),
+        concreteProducts: parsedOutput.concreteProducts || [],
+        concreteServices: parsedOutput.concreteServices || [],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (error) {
     console.error("Error analyzing URLs:", error);
     return new Response(

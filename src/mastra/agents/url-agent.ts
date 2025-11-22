@@ -22,6 +22,8 @@ const analysisSchema = z.object({
     confidence: z.enum(["high", "medium", "low"]).describe("Nivel de confianza del insight"),
   })).max(10).describe("Lista de insights extraídos, máximo 10"),
   summary: z.string().describe("Resumen breve del análisis en 2-3 oraciones"),
+  concreteProducts: z.array(z.string()).max(10).describe("Lista de nombres específicos de productos que se venden (ej: 'iPhone 15 Pro', 'MacBook Air M2')"),
+  concreteServices: z.array(z.string()).max(10).describe("Lista de nombres específicos de servicios que se ofrecen (ej: 'Consultoría Fiscal', 'Diseño Web')"),
 });
 
 export const urlAnalyzerAgent = new Agent({
@@ -42,16 +44,25 @@ CATEGORÍAS DE INSIGHTS (extrae hasta 10, prioriza lo más relevante):
 9. **integrations**: Integraciones con otras plataformas/herramientas
 10. **tech_stack**: Tecnologías que usan o mencionan
 
+EXTRACCIÓN DE PRODUCTOS Y SERVICIOS CONCRETOS:
+- **concreteProducts**: Busca nombres ESPECÍFICOS de productos (ej: "iPhone 15 Pro", "Zapatillas Nike Air Max", "Plan Premium")
+- **concreteServices**: Busca nombres ESPECÍFICOS de servicios (ej: "Consultoría Fiscal", "Diseño Web Corporativo", "Coaching Ejecutivo")
+- Extrae hasta 10 de cada uno
+- Deben ser nombres reales encontrados en el sitio, NO categorías genéricas
+- Si no encuentras ninguno, deja el array vacío
+
 PROCESO:
 1. Usa urlReaderTool para cada URL
 2. Analiza el contenido extraído
 3. Identifica los insights más relevantes
-4. Asigna cada insight a UNA categoría específica
-5. Genera un resumen conciso
+4. Extrae nombres concretos de productos y servicios
+5. Asigna cada insight a UNA categoría específica
+6. Genera un resumen conciso
 
 FORMATO DE RESPUESTA:
 - Máximo 10 insights, cada uno con type, label (corto) y value (descriptivo)
 - Un summary general en 2-3 oraciones
+- Arrays de concreteProducts y concreteServices con nombres reales
 - Prioriza información concreta y útil para campañas de marketing
 
 Responde SOLO con el objeto JSON estructurado según el schema, sin texto adicional.`,

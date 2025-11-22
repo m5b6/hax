@@ -1,16 +1,23 @@
-import { processDataStream } from "@ai-sdk/ui-utils";
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, ArrowRight, Brain, Sparkles, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
+import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ShinyText from "./ShinyText";
+import { InsightsChip } from "./InsightsChip";
 
 interface StepIdentityProps {
   onNext: (data: any) => void;
   onAnalyzingChange?: (isAnalyzing: boolean) => void;
   onNameChange?: (name: string) => void;
+  onColorsDiscovered?: (colors: string[]) => void;
+}
+
+interface ProductServiceOption {
+  value: string;
+  label: string;
+  source: string;
 }
 
 type InsightType = "style" | "info" | "products" | "services" | "target_audience" | "tone" | "pricing" | "features" | "integrations" | "tech_stack";
@@ -53,7 +60,7 @@ const insightColors: Record<InsightType, string> = {
   tech_stack: "from-slate-500 to-gray-600",
 };
 
-export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepIdentityProps) => {
+export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange, onColorsDiscovered }: StepIdentityProps) => {
   const [name, setName] = useState("");
   const [identity, setIdentity] = useState("");
   const [urls, setUrls] = useState<string[]>([""]);
@@ -61,7 +68,11 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
   const [productName, setProductName] = useState("");
   const [urlAnalyses, setUrlAnalyses] = useState<Map<string, URLAnalysis>>(new Map());
   const [analyzingUrls, setAnalyzingUrls] = useState<Set<string>>(new Set());
-  const [toolStatus, setToolStatus] = useState<Map<string, { toolName?: string; status: "calling" | "executing" | "complete" }>>(new Map());
+  const [discoveredColors, setDiscoveredColors] = useState<string[]>([]);
+  const [discoveredProducts, setDiscoveredProducts] = useState<ProductServiceOption[]>([]);
+  const [discoveredServices, setDiscoveredServices] = useState<ProductServiceOption[]>([]);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
 
   useEffect(() => {
     onNameChange?.(name);
@@ -70,6 +81,12 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
   useEffect(() => {
     onAnalyzingChange?.(analyzingUrls.size > 0);
   }, [analyzingUrls.size, onAnalyzingChange]);
+
+  useEffect(() => {
+    if (discoveredColors.length > 0) {
+      onColorsDiscovered?.(discoveredColors);
+    }
+  }, [discoveredColors, onColorsDiscovered]);
 
   const addUrl = () => setUrls([...urls, ""]);
   const removeUrl = (index: number) => {
@@ -87,115 +104,114 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
     setUrls(newUrls);
   };
 
-  const analyzeUrl = async (url: string) => {
+  const formatUrl = (url: string): string => {
+    let formatted = url.trim();
+    if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+      formatted = 'https://' + formatted;
+    }
+    if (!formatted.endsWith('/')) {
+      formatted = formatted + '/';
+    }
+    return formatted;
+  };
+
+  const analyzeUrl = async (url: string, index: number) => {
     if (!url || url.trim() === "") return;
     
-    setAnalyzingUrls((prev) => {
-      const newSet = new Set(prev).add(url);
-      return newSet;
-    });
-    setUrlAnalyses((prev) => new Map(prev).set(url, { url, insights: [] }));
-    const urlToolStatus = new Map<string, { toolName?: string; status: "calling" | "executing" | "complete" }>();
+    const formattedUrl = formatUrl(url);
+    const newUrls = [...urls];
+    newUrls[index] = formattedUrl;
+    setUrls(newUrls);
+    
+    setAnalyzingUrls((prev) => new Set(prev).add(formattedUrl));
+    setUrlAnalyses((prev) => new Map(prev).set(formattedUrl, { url: formattedUrl, insights: [] }));
 
     try {
       const response = await fetch("/api/agent/analyze-urls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls: [url] }),
+        body: JSON.stringify({ urls: [formattedUrl] }),
       });
 
       if (!response.ok) throw new Error("Failed to analyze URL");
-      if (!response.body) throw new Error("No response body");
 
-      let fullJson = "";
-      await processDataStream({
-        stream: response.body,
-        onTextPart: (text) => { 
-          fullJson += text;
-        },
-        onToolCallStreamingStartPart: ({ toolCallId, toolName }) => {
-          console.log("[Stream] Tool call start:", toolName);
-          urlToolStatus.set(toolCallId, {
-            toolName: toolName || "tool",
-            status: "calling",
-          });
-          setToolStatus(new Map(urlToolStatus));
-        },
-        onToolCallPart: ({ toolCallId, toolName }) => {
-          console.log("[Stream] Tool call:", toolName);
-          urlToolStatus.set(toolCallId, {
-            toolName: toolName || "tool",
-            status: "calling",
-          });
-          setToolStatus(new Map(urlToolStatus));
-        },
-        onToolResultPart: ({ toolCallId, result }) => {
-          console.log("[Stream] Tool result:", result);
-          const existing = urlToolStatus.get(toolCallId);
-          if (existing) {
-            urlToolStatus.set(toolCallId, {
-              ...existing,
-              status: "complete",
-            });
-            setToolStatus(new Map(urlToolStatus));
-          }
-        },
-        onFinishMessagePart: () => {
-          console.log("[Stream] Stream finished. Full content:", fullJson);
-          try {
-            // Robust cleanup of markdown code blocks
-            let cleanJson = fullJson.trim();
-            // Remove opening ```json or ```
-            cleanJson = cleanJson.replace(/^```(?:json)?\s*/, "");
-            // Remove closing ```
-            cleanJson = cleanJson.replace(/\s*```$/, "");
-            
-            console.log("[Stream] Cleaned JSON:", cleanJson);
-            
-            if (!cleanJson) {
-              console.warn("[Stream] Empty JSON received");
-              return;
-            }
-            
-            const parsed = JSON.parse(cleanJson);
-            if (parsed && parsed.insights && Array.isArray(parsed.insights)) {
-              console.log("[Stream] Updating insights:", parsed.insights);
-              setUrlAnalyses((prev) => {
-                return new Map(prev).set(url, {
-                  url,
-                  insights: parsed.insights,
-                });
-              });
-            } else {
-              console.warn("[Stream] JSON parsed but missing insights array:", parsed);
-            }
-          } catch (e) {
-            console.error("[Stream] Error parsing final JSON:", e);
-            console.log("Failed JSON content:", fullJson);
-          }
-        },
-      });
+      const data = await response.json();
+      
+      if (data && data.insights && Array.isArray(data.insights)) {
+        setUrlAnalyses((prev) => new Map(prev).set(formattedUrl, {
+          url: formattedUrl,
+          insights: data.insights,
+        }));
+      }
+
+      if (data.colors && Array.isArray(data.colors) && data.colors.length > 0) {
+        setDiscoveredColors((prev) => {
+          const newColors = [...prev, ...data.colors].filter((c, i, arr) => arr.indexOf(c) === i);
+          return newColors.slice(0, 2);
+        });
+      }
+
+      if (data.concreteProducts && Array.isArray(data.concreteProducts)) {
+        const products: ProductServiceOption[] = data.concreteProducts.map((p: string) => ({
+          value: p,
+          label: p,
+          source: formattedUrl,
+        }));
+        setDiscoveredProducts((prev) => {
+          const combined = [...prev, ...products];
+          const unique = combined.filter((item, index, self) => 
+            index === self.findIndex((t) => t.value === item.value)
+          );
+          return unique;
+        });
+      }
+
+      if (data.concreteServices && Array.isArray(data.concreteServices)) {
+        const services: ProductServiceOption[] = data.concreteServices.map((s: string) => ({
+          value: s,
+          label: s,
+          source: formattedUrl,
+        }));
+        setDiscoveredServices((prev) => {
+          const combined = [...prev, ...services];
+          const unique = combined.filter((item, index, self) => 
+            index === self.findIndex((t) => t.value === item.value)
+          );
+          return unique;
+        });
+      }
     } catch (error) {
       console.error("Error analyzing URL:", error);
     } finally {
       setAnalyzingUrls((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(url);
+        newSet.delete(formattedUrl);
         return newSet;
       });
     }
   };
 
   useEffect(() => {
-    const validUrls = urls.filter((u) => u && u.trim() !== "" && !urlAnalyses.has(u) && !analyzingUrls.has(u));
+    const validUrlsWithIndex = urls
+      .map((u, i) => ({ url: u, index: i }))
+      .filter(({ url }) => url && url.trim() !== "" && !urlAnalyses.has(url) && !analyzingUrls.has(url) && !urlAnalyses.has(formatUrl(url)) && !analyzingUrls.has(formatUrl(url)));
     
-    if (validUrls.length > 0) {
+    if (validUrlsWithIndex.length > 0) {
       const timeoutId = setTimeout(() => {
-        validUrls.forEach(url => analyzeUrl(url));
+        validUrlsWithIndex.forEach(({ url, index }) => analyzeUrl(url, index));
       }, 1500);
       return () => clearTimeout(timeoutId);
     }
   }, [urls]);
+
+  useEffect(() => {
+    if (discoveredProducts.length > 0 && type === 'producto') {
+      setShowProductDropdown(true);
+    }
+    if (discoveredServices.length > 0 && type === 'servicio') {
+      setShowServiceDropdown(true);
+    }
+  }, [discoveredProducts, discoveredServices, type]);
 
   const handleNext = () => {
     if (name && identity && productName) {
@@ -211,51 +227,47 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
   };
 
   return (
-    <div className="space-y-10">
-      <div className="space-y-8">
-        <div className="space-y-4">
-          <Label htmlFor="name" className="text-[15px] font-medium text-slate-500 ml-1">
+    <div className="space-y-8">
+      <div className="space-y-5">
+        <div className="space-y-2.5">
+          <Label htmlFor="name" className="text-sm font-medium text-slate-500 ml-1">
             Nombre del negocio o marca
           </Label>
           <Input
             id="name"
             placeholder="Ej: Vita, Mi Gimnasio, etc."
-            className="glass-input h-16 text-lg rounded-[1.25rem] px-5"
+            className="glass-input h-12 text-base rounded-2xl px-4"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
           />
         </div>
 
-        <div className="space-y-4">
-          <Label htmlFor="identity" className="text-[15px] font-medium text-slate-500 ml-1">
+        <div className="space-y-2.5">
+          <Label htmlFor="identity" className="text-sm font-medium text-slate-500 ml-1">
             {name ? `Cuéntanos sobre ${name}` : "Cuéntanos sobre tu negocio"}
           </Label>
           <Input
             id="identity"
             placeholder="Describe brevemente qué hace..."
-            className="glass-input h-16 text-lg rounded-[1.25rem] px-5"
+            className="glass-input h-12 text-base rounded-2xl px-4"
             value={identity}
             onChange={(e) => setIdentity(e.target.value)}
           />
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Label className="text-[15px] font-medium text-slate-500 ml-1">Sus URLs</Label>
-            {analyzingUrls.size > 0 && (
-              <div className="flex items-center gap-1.5">
-                <Brain className="w-4 h-4 text-blue-500" />
-                <ShinyText 
-                  text="Analizando..." 
-                  disabled={false} 
-                  speed={3} 
-                  className="text-xs font-medium"
-                />
-              </div>
-            )}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm font-medium text-slate-500 ml-1">Sus URLs</Label>
+            <div className="flex items-center gap-2">
+              {Array.from(urlAnalyses.values()).map((analysis) => 
+                analysis.insights.length > 0 && (
+                  <InsightsChip key={analysis.url} insights={analysis.insights} url={analysis.url} />
+                )
+              )}
+            </div>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <AnimatePresence initial={false}>
               {urls.map((url, index) => {
                 const analysis = url ? urlAnalyses.get(url) : null;
@@ -272,48 +284,58 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
                     <div className="relative flex-1">
                       <Input
                         placeholder="https://..."
-                        className="glass-input h-16 text-lg rounded-[1.25rem] px-5 pr-32"
+                        className={`glass-input h-12 text-base rounded-2xl px-4 pr-12 transition-all duration-500 ${
+                          isAnalyzing ? 'ring-2 ring-blue-400/30 shadow-lg shadow-blue-500/10' : ''
+                        }`}
                         value={url}
                         onChange={(e) => updateUrl(index, e.target.value)}
+                        disabled={!!isAnalyzing}
                       />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                        {isAnalyzing && (
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                          >
-                            <Sparkles className="w-5 h-5 text-blue-500" />
-                          </motion.div>
-                        )}
-                        {analysis && analysis.insights.length > 0 && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="flex items-center -space-x-2"
-                          >
-                            {analysis.insights.slice(0, 5).map((insight, i) => {
-                              const Icon = insightIcons[insight.type];
-                              const colorClass = insightColors[insight.type];
-                              return (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6">
+                        <AnimatePresence mode="wait">
+                          {isAnalyzing && (
+                            <motion.div
+                              key="analyzing"
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              className="absolute inset-0 flex items-center justify-center"
+                            >
+                              <div className="relative w-5 h-5">
                                 <motion.div
-                                  key={i}
-                                  initial={{ scale: 0, x: -10 }}
-                                  animate={{ scale: 1, x: 0 }}
-                                  transition={{ delay: i * 0.1 }}
-                                  className={`w-7 h-7 rounded-full bg-gradient-to-br ${colorClass} flex items-center justify-center text-white shadow-lg border-2 border-white`}
-                                  title={insight.label}
-                                >
-                                  <Icon className="w-3.5 h-3.5" />
-                                </motion.div>
-                              );
-                            })}
-                            {analysis.insights.length > 5 && (
-                              <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-[10px] font-semibold shadow-lg border-2 border-white">
-                                +{analysis.insights.length - 5}
+                                  className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500 opacity-20"
+                                  animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0, 0.2] }}
+                                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                />
+                                <motion.div
+                                  className="absolute inset-0.5 rounded-full border-2 border-blue-500"
+                                  style={{ 
+                                    borderTopColor: 'transparent',
+                                    borderRightColor: 'rgb(147, 51, 234)',
+                                  }}
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                                />
+                                <div className="absolute inset-[6px] rounded-full bg-gradient-to-tr from-blue-400 to-purple-500" />
                               </div>
-                            )}
-                          </motion.div>
-                        )}
+                            </motion.div>
+                          )}
+                          {!isAnalyzing && analysis && analysis.insights.length > 0 && (
+                            <motion.div
+                              key="complete"
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0 }}
+                              className="absolute inset-0 flex items-center justify-center"
+                            >
+                              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-green-400 to-emerald-500 shadow-lg shadow-green-500/30 flex items-center justify-center">
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
                     {urls.length > 1 && (
@@ -321,9 +343,9 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
                         variant="ghost"
                         size="icon"
                         onClick={() => removeUrl(index)}
-                        className="h-14 w-14 shrink-0 rounded-[1.25rem] bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 border border-slate-100 shadow-sm active:shadow-inner active:scale-[0.96]"
+                        className="h-12 w-12 shrink-0 rounded-2xl bg-white text-slate-400 hover:text-red-500 hover:bg-red-50 border border-slate-100 shadow-sm active:shadow-inner active:scale-[0.96]"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
                   </motion.div>
@@ -335,16 +357,16 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
             variant="ghost"
             size="sm"
             onClick={addUrl}
-            className="mt-1 h-10 px-4 rounded-full text-[13px] font-medium text-slate-400 hover:text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-all active:scale-[0.96]"
+            className="h-8 px-3 rounded-full text-xs font-medium text-slate-400 hover:text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-all active:scale-[0.96]"
           >
-            <Plus className="w-4 h-4 mr-1.5" /> Agregar otra URL
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> Agregar otra URL
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/80 rounded-[1.5rem] border border-slate-200/50 shadow-inner">
+        <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/50 shadow-inner">
           <button
             onClick={() => setType("producto")}
-            className={`py-4 rounded-[1.25rem] text-lg font-medium transition-all duration-300 relative overflow-hidden ${
+            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden ${
               type === "producto"
                 ? "text-slate-900"
                 : "text-slate-400 hover:text-slate-600"
@@ -353,7 +375,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
             {type === "producto" && (
               <motion.div 
                 layoutId="activeTab"
-                className="absolute inset-0 glass-input rounded-[1.25rem]"
+                className="absolute inset-0 glass-input rounded-xl"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
@@ -361,7 +383,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
           </button>
           <button
             onClick={() => setType("servicio")}
-            className={`py-4 rounded-[1.25rem] text-lg font-medium transition-all duration-300 relative overflow-hidden ${
+            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden ${
               type === "servicio"
                 ? "text-slate-900"
                 : "text-slate-400 hover:text-slate-600"
@@ -370,7 +392,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
             {type === "servicio" && (
               <motion.div 
                 layoutId="activeTab"
-                className="absolute inset-0 glass-input rounded-[1.25rem]"
+                className="absolute inset-0 glass-input rounded-xl"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
@@ -378,28 +400,98 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
           </button>
         </div>
 
-        <div className="space-y-4">
-          <Label htmlFor="productName" className="text-[15px] font-medium text-slate-500 ml-1">
+        <div className="space-y-2.5">
+          <Label htmlFor="productName" className="text-sm font-medium text-slate-500 ml-1">
             Nombre del {type}
           </Label>
-          <Input
-            id="productName"
-            placeholder={`Ej: ${type === "producto" ? "Zapatillas Runner X" : "Consultoría Fiscal"}`}
-            className="glass-input h-16 text-lg rounded-[1.25rem] px-5"
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-          />
+          {type === 'producto' && discoveredProducts.length > 0 && showProductDropdown ? (
+            <Select value={productName} onValueChange={(value) => {
+              if (value === '__custom__') {
+                setShowProductDropdown(false);
+                setProductName('');
+              } else {
+                setProductName(value);
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un producto..." />
+              </SelectTrigger>
+              <SelectContent>
+                {discoveredProducts.map((product, i) => (
+                  <SelectItem key={i} value={product.value}>
+                    {product.label}
+                  </SelectItem>
+                ))}
+                <SelectSeparator />
+                <SelectItem value="__custom__" className="text-blue-500">
+                  <div className="flex items-center gap-2">
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Escribir otro...</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : type === 'servicio' && discoveredServices.length > 0 && showServiceDropdown ? (
+            <Select value={productName} onValueChange={(value) => {
+              if (value === '__custom__') {
+                setShowServiceDropdown(false);
+                setProductName('');
+              } else {
+                setProductName(value);
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un servicio..." />
+              </SelectTrigger>
+              <SelectContent>
+                {discoveredServices.map((service, i) => (
+                  <SelectItem key={i} value={service.value}>
+                    {service.label}
+                  </SelectItem>
+                ))}
+                <SelectSeparator />
+                <SelectItem value="__custom__" className="text-blue-500">
+                  <div className="flex items-center gap-2">
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Escribir otro...</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="relative">
+              <Input
+                id="productName"
+                placeholder={`Ej: ${type === "producto" ? "Zapatillas Runner X" : "Consultoría Fiscal"}`}
+                className="glass-input h-12 text-base rounded-2xl px-4"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+              />
+              {((type === 'producto' && discoveredProducts.length > 0) || (type === 'servicio' && discoveredServices.length > 0)) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (type === 'producto') setShowProductDropdown(true);
+                    else setShowServiceDropdown(true);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors"
+                >
+                  Ver opciones
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="pt-8 flex justify-end">
+      <div className="pt-6 flex justify-end">
         <Button
           size="lg"
           onClick={handleNext}
           disabled={!name || !identity || !productName}
-          className="glass-button-primary h-16 rounded-full px-10 text-[17px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+          className="glass-button-primary h-12 rounded-full px-8 text-base font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Continuar <ArrowRight className="ml-2.5 w-5 h-5" />
+          Continuar <ArrowRight className="ml-2 w-4 h-4" />
         </Button>
       </div>
     </div>

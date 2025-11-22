@@ -9,6 +9,7 @@ interface WizardLayoutProps {
   title?: string;
   subtitle?: string;
   isAnalyzing?: boolean;
+  brandColors?: string[];
 }
 
 export const WizardLayout = ({
@@ -18,6 +19,7 @@ export const WizardLayout = ({
   title,
   subtitle,
   isAnalyzing = false,
+  brandColors = [],
 }: WizardLayoutProps) => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
@@ -65,14 +67,14 @@ export const WizardLayout = ({
               />
             </div>
             
-            <div className="glass-panel rounded-[2.5rem] p-8 sm:p-14 relative">
+            <div className="glass-panel rounded-[2.5rem] p-6 sm:p-10 relative">
               {title && (
-                <header className="mb-10 text-center space-y-3">
+                <header className="mb-8 text-center space-y-2">
                   <motion.h1 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="text-3xl sm:text-4xl tracking-tight text-slate-900 font-bold"
+                    className="text-2xl sm:text-3xl tracking-tight text-slate-900 font-bold"
                     style={{ fontFamily: 'var(--font-instrument-serif), serif' }}
                   >
                     {title}
@@ -82,7 +84,7 @@ export const WizardLayout = ({
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.3 }}
-                      className="text-slate-500 text-lg font-medium leading-relaxed"
+                      className="text-slate-500 text-base font-medium leading-relaxed"
                     >
                       {subtitle}
                     </motion.p>
@@ -96,25 +98,19 @@ export const WizardLayout = ({
         </AnimatePresence>
       </main>
 
-      {isAnalyzing ? (
-        <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-          <ColorBends 
-            chromatic={true}
-            speed={0.3}
-            autoRotate={10}
-            scale={1.2}
-            frequency={1.5}
-            warpStrength={1.5}
-            transparent={true}
-            noise={0.05}
-          />
-        </div>
-      ) : (
-        <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-30%] right-[-15%] w-[60%] h-[60%] rounded-full bg-purple-100/30 blur-[140px]" />
-          <div className="absolute bottom-[-30%] left-[-15%] w-[60%] h-[60%] rounded-full bg-blue-100/30 blur-[140px]" />
-        </div>
-      )}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <ColorBends 
+          chromatic={brandColors.length === 0}
+          colors={brandColors.length > 0 ? brandColors : ['#40C9FF', '#E81CFF', '#FF9F0A']}
+          speed={0.3}
+          autoRotate={10}
+          scale={1.2}
+          frequency={1.5}
+          warpStrength={1.5}
+          transparent={true}
+          noise={0.05}
+        />
+      </div>
 
       <style jsx>{`
         @keyframes rainbow-shift {

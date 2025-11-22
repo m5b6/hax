@@ -24,6 +24,7 @@ function WizardContent() {
   const [data, setData] = useState<any>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [businessName, setBusinessName] = useState("");
+  const [brandColors, setBrandColors] = useState<string[]>([]);
 
   const handleNext = (newData: any) => {
     setData((prev: any) => ({ ...prev, ...newData }));
@@ -34,7 +35,7 @@ function WizardContent() {
     {
       title: "Cuéntanos sobre tu negocio",
       subtitle: "Empecemos por lo básico para entender qué ofreces.",
-      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} onNameChange={setBusinessName} />,
+      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} onNameChange={setBusinessName} onColorsDiscovered={setBrandColors} />,
     },
     {
       title: "Identidad de Marca",
@@ -69,6 +70,7 @@ function WizardContent() {
       title={getStepTitle(step)}
       subtitle={currentStepData.subtitle}
       isAnalyzing={isAnalyzing}
+      brandColors={brandColors}
     >
       {currentStepData.component}
     </WizardLayout>
