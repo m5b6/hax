@@ -26,7 +26,6 @@ const analysisSchema = z.object({
   primaryColor: z.string().nullable(),
   secondaryColor: z.string().nullable(),
   brandLogoUrl: z.string().nullable(),
-  images: z.array(z.string()).max(50).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -70,9 +69,36 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
     let secondaryColor: string | null = parsedOutput.secondaryColor ?? null;
     let brandLogoUrl: string | null = parsedOutput.brandLogoUrl ?? null;
     
+    console.log('[API] Tool results count:', toolResults.length);
+    console.log('[API] Full result structure:', JSON.stringify(result, null, 2).substring(0, 500));
+    
     for (const toolResult of toolResults) {
-      if (toolResult.result && typeof toolResult.result === 'object') {
-        const resultObj = toolResult.result as any;
+      let resultObj: any = null;
+      
+      if (toolResult.result) {
+        if (typeof toolResult.result === 'string') {
+          try {
+            resultObj = JSON.parse(toolResult.result);
+          } catch {
+            resultObj = toolResult.result;
+          }
+        } else if (typeof toolResult.result === 'object') {
+          resultObj = toolResult.result;
+        }
+      }
+      
+      if (!resultObj && toolResult.output) {
+        resultObj = typeof toolResult.output === 'string' ? JSON.parse(toolResult.output) : toolResult.output;
+      }
+      
+      if (!resultObj && typeof toolResult === 'object' && 'images' in toolResult) {
+        resultObj = toolResult;
+      }
+      
+      if (resultObj) {
+        console.log('[API] Tool result keys:', Object.keys(resultObj));
+        console.log('[API] Images in tool result:', Array.isArray(resultObj.images) ? resultObj.images.length : 'not an array', typeof resultObj.images);
+        
         const extractedColors = resultObj.colors;
         if (Array.isArray(extractedColors) && extractedColors.length > 0) {
           colors = extractedColors;
@@ -86,11 +112,14 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
         if (!brandLogoUrl && typeof resultObj.logoUrl === 'string') {
           brandLogoUrl = resultObj.logoUrl;
         }
-        if (Array.isArray(resultObj.images)) {
-          images = images.concat(resultObj.images);
+        if (Array.isArray(resultObj.images) && resultObj.images.length > 0) {
+          console.log('[API] Adding images:', resultObj.images.length);
+          images = images.concat(resultObj.images.filter((img: any) => typeof img === 'string' && img.trim().length > 0));
         }
       }
     }
+    
+    console.log('[API] Final images count:', images.length);
 
     if (!primaryColor && colors.length > 0) {
       primaryColor = colors[0];

@@ -98,11 +98,22 @@ export const urlReaderTool = createTool({
         .get()
         .filter(Boolean);
 
-      const images = $('img')
-        .map((_, el) => resolveUrl($(el).attr('src') || ''))
+      const allImageElements = $('img')
+        .map((_, el) => {
+          const src = $(el).attr('src');
+          const srcset = $(el).attr('srcset');
+          
+          if (!src) return null;
+          
+          const resolvedSrc = resolveUrl(src);
+          
+          return {
+            url: resolvedSrc,
+            srcset: srcset ? srcset.split(',').map(s => resolveUrl(s.trim().split(' ')[0])).filter(Boolean) : [],
+          };
+        })
         .get()
-        .filter(Boolean)
-        .slice(0, 20);
+        .filter(Boolean);
 
       const scripts = $('script[src]')
         .map((_, el) => resolveUrl($(el).attr('src') || ''))
@@ -117,6 +128,26 @@ export const urlReaderTool = createTool({
       
       const colorRegex = /#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}|rgba?\([^)]+\)/g;
       const allStyles = inlineStyles + ' ' + styleAttributes;
+
+      const backgroundImageRegex = /url\(['"]?([^'")]+)['"]?\)/g;
+      const backgroundImages: string[] = [];
+      let match;
+      while ((match = backgroundImageRegex.exec(allStyles)) !== null) {
+        const url = match[1].trim();
+        if (url && !url.startsWith('data:') && !url.includes('gradient') && !url.includes('linear-gradient')) {
+          try {
+            const resolved = resolveUrl(url);
+            backgroundImages.push(resolved);
+          } catch {}
+        }
+      }
+
+      const allImageUrls = [
+        ...allImageElements.map((img: any) => img.url),
+        ...allImageElements.flatMap((img: any) => img.srcset || []),
+        ...backgroundImages,
+      ]
+        .filter((url, idx, arr) => arr.indexOf(url) === idx);
       const rawColors = [...new Set(allStyles.match(colorRegex) || [])].slice(0, 20);
 
       const fontRegex = /(?:https?:)?\/\/[^)]+\.(?:woff2?|ttf|eot|otf)/g;
@@ -198,6 +229,41 @@ export const urlReaderTool = createTool({
 
       const logoUrl = bestLogo || inlineSvgMarkup || null;
 
+      const logoUrlString = typeof logoUrl === 'string' ? logoUrl.toLowerCase() : '';
+      const logoCandidatesLower = logoImageCandidates.map(l => l.toLowerCase());
+      
+      let finalImageUrls = allImageUrls.filter((url) => {
+        if (!url || typeof url !== 'string') return false;
+        
+        const urlLower = url.toLowerCase();
+        
+        if (logoUrlString && urlLower === logoUrlString) return false;
+        if (logoCandidatesLower.some(logo => urlLower === logo)) return false;
+        
+        const isFavicon = urlLower.includes('/favicon') || urlLower.includes('favicon.');
+        const isTinyIcon = urlLower.match(/icon-?\d+x\d+\.(png|jpg|svg)/i);
+        const isAppleTouchIcon = urlLower.includes('apple-touch-icon');
+        const isDataUri = url.startsWith('data:');
+        
+        if (isFavicon || isTinyIcon || isAppleTouchIcon || isDataUri) return false;
+        
+        return true;
+      });
+
+      if (finalImageUrls.length === 0 && allImageUrls.length > 0) {
+        finalImageUrls = allImageUrls
+          .filter(url => url && typeof url === 'string' && !url.startsWith('data:'))
+          .filter(url => {
+            const urlLower = url.toLowerCase();
+            return !urlLower.includes('favicon') && 
+                   !urlLower.includes('apple-touch-icon') &&
+                   (!logoUrlString || urlLower !== logoUrlString);
+          })
+          .slice(0, 30);
+      } else {
+        finalImageUrls = finalImageUrls.slice(0, 30);
+      }
+
       $('script, style, nav, footer, header').remove();
 
       const title = $('title').text() || 
@@ -233,11 +299,11 @@ export const urlReaderTool = createTool({
         });
       }
 
-      if (images.length > 0) {
+      if (finalImageUrls.length > 0) {
         extractedData.push({
           type: "style" as const,
           label: "Recursos visuales",
-          value: `${images.length} imágenes encontradas`,
+          value: `${finalImageUrls.length} imágenes encontradas`,
           confidence: "high" as const,
         });
       }
@@ -294,7 +360,7 @@ export const urlReaderTool = createTool({
         description: description.trim(),
         content: cleanContent,
         stylesheets,
-        images,
+        images: finalImageUrls,
         scripts,
         fonts,
         colors: prioritizedColors.slice(0, 10),
