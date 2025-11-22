@@ -24,13 +24,13 @@ const analysisSchema = z.object({
   summary: z.string().describe("Resumen breve del análisis en 2-3 oraciones"),
   concreteProducts: z.array(z.object({
     name: z.string().describe("Nombre específico del producto"),
-    icon: z.string().optional().describe("Nombre del icono de lucide-react que mejor representa el producto (ej: 'Package', 'Smartphone', 'Laptop')"),
-    color: z.string().optional().describe("Color hex que mejor representa el producto (ej: '#3B82F6', '#8B5CF6')"),
+    icon: z.string().nullable().describe("Nombre del icono de lucide-react que mejor representa el producto (ej: 'Package', 'Smartphone', 'Laptop'). Usa null si no hay un icono apropiado."),
+    color: z.string().nullable().describe("Color hex que mejor representa el producto (ej: '#3B82F6', '#8B5CF6'). Usa null si no hay un color apropiado."),
   })).max(10).describe("Lista de productos específicos con nombre, icono opcional y color opcional"),
   concreteServices: z.array(z.object({
     name: z.string().describe("Nombre específico del servicio"),
-    icon: z.string().optional().describe("Nombre del icono de lucide-react que mejor representa el servicio (ej: 'Briefcase', 'Code', 'Users')"),
-    color: z.string().optional().describe("Color hex que mejor representa el servicio (ej: '#10B981', '#F59E0B')"),
+    icon: z.string().nullable().describe("Nombre del icono de lucide-react que mejor representa el servicio (ej: 'Briefcase', 'Code', 'Users'). Usa null si no hay un icono apropiado."),
+    color: z.string().nullable().describe("Color hex que mejor representa el servicio (ej: '#10B981', '#F59E0B'). Usa null si no hay un color apropiado."),
   })).max(10).describe("Lista de servicios específicos con nombre, icono opcional y color opcional"),
   primaryColor: z.string().nullable().describe("Hex o valor CSS para el color primario detectado"),
   secondaryColor: z.string().nullable().describe("Hex o valor CSS para el color secundario detectado"),

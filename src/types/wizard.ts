@@ -44,6 +44,13 @@ export interface UserInputs {
   productName?: string;
 }
 
+export interface SelectionStackItem {
+  id: string;
+  text: string;
+  icon: string;
+  color: string;
+}
+
 export interface AgentResponse {
   // URL Analysis responses
   urlAnalyses?: URLAnalysis[];
@@ -78,6 +85,9 @@ export interface AgentResponse {
     }>;
   }>;
   mcqAnswers?: Record<string, string>;
+  
+  // Selection stack (visual history of picks)
+  selectionStack?: SelectionStackItem[];
   
   // Campaign generation responses (from final step agent)
   campaignCopy?: {

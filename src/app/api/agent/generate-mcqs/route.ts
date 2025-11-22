@@ -89,6 +89,10 @@ export async function POST(req: NextRequest) {
 
 ${contextPrompt}
 
+⚠️ IMPORTANTE: Cada header/título (campo "text") debe ser ÚNICO y específico para este negocio. NUNCA uses headers genéricos como "Digital Pro", "Cálido Humano", "Acción Ya", "Moderno", "Natural", "Directo", "Rápido", "Medio", "Lento", "Alta", "Media", "Cero". 
+
+En su lugar, crea headers contextuales que reflejen la identidad única de este negocio específico. Analiza su tipo de negocio, productos/servicios, público objetivo y estilo de comunicación para generar headers que realmente capturen su esencia.
+
 Usa toda esta información para hacer las preguntas y opciones específicas y relevantes para este negocio en particular. Cada opción debe explicar por qué funciona para SU negocio específico.`;
 
     const result = await agent.generate(prompt, {

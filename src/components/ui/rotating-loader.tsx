@@ -80,10 +80,17 @@ export function RotatingLoader({
             exit={{ opacity: 0, y: -20, scale: 0.95, filter: "blur(4px)" }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
             className={cn(
-              "flex items-center gap-2 whitespace-nowrap",
+              "flex items-center gap-2",
               sizeClasses.text[textSize],
               "font-medium text-slate-500"
             )}
+            style={{
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "100%",
+              lineHeight: "1.2",
+            }}
           >
             {Icon && (
               <motion.div
@@ -97,12 +104,12 @@ export function RotatingLoader({
                   repeatDelay: 1.4,
                   ease: "easeInOut",
                 }}
-                className="flex items-center justify-center"
+                className="flex items-center justify-center shrink-0"
               >
-                <Icon className={cn("shrink-0 text-current", sizeClasses.icon[spinnerSize])} />
+                <Icon className={cn("text-current", sizeClasses.icon[spinnerSize])} />
               </motion.div>
             )}
-            <span>{currentItem.text}</span>
+            <span className="truncate">{currentItem.text}</span>
           </motion.div>
         </AnimatePresence>
       </div>

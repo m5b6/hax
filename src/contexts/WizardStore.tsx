@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
-import { WizardData, UserInputs, AgentResponse, URLAnalysis } from "@/types/wizard";
+import { WizardData, UserInputs, AgentResponse, URLAnalysis, SelectionStackItem } from "@/types/wizard";
 
 interface WizardStoreContextValue {
   // Read operations
@@ -22,6 +22,12 @@ interface WizardStoreContextValue {
   addURLAnalysis: (analysis: URLAnalysis) => void;
   updateURLAnalysis: (url: string, updates: Partial<URLAnalysis>) => void;
   removeURLAnalysis: (url: string) => void;
+  
+  // Selection stack operations
+  addToSelectionStack: (item: SelectionStackItem) => void;
+  getSelectionStack: () => SelectionStackItem[];
+  clearSelectionStack: () => void;
+  resetSelectionStack: () => void;
   
   // Reset
   reset: () => void;
@@ -178,6 +184,58 @@ export function WizardStoreProvider({ children }: { children: React.ReactNode })
     });
   }, []);
 
+  // Selection stack operations
+  const addToSelectionStack = useCallback((item: SelectionStackItem): void => {
+    setData((prev) => {
+      const existingStack = prev.agentResponses.selectionStack || [];
+      const updatedStack = [...existingStack, item];
+      
+      return {
+        ...prev,
+        agentResponses: {
+          ...prev.agentResponses,
+          selectionStack: updatedStack,
+        },
+        metadata: {
+          ...prev.metadata,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  }, []);
+
+  const getSelectionStack = useCallback((): SelectionStackItem[] => {
+    return data.agentResponses.selectionStack || [];
+  }, [data.agentResponses.selectionStack]);
+
+  const clearSelectionStack = useCallback((): void => {
+    setData((prev) => ({
+      ...prev,
+      agentResponses: {
+        ...prev.agentResponses,
+        selectionStack: [],
+      },
+      metadata: {
+        ...prev.metadata,
+        updatedAt: new Date().toISOString(),
+      },
+    }));
+  }, []);
+
+  const resetSelectionStack = useCallback((): void => {
+    setData((prev) => ({
+      ...prev,
+      agentResponses: {
+        ...prev.agentResponses,
+        selectionStack: [],
+      },
+      metadata: {
+        ...prev.metadata,
+        updatedAt: new Date().toISOString(),
+      },
+    }));
+  }, []);
+
   // Reset operations
   const reset = useCallback((): void => {
     setData(initialData);
@@ -231,6 +289,10 @@ export function WizardStoreProvider({ children }: { children: React.ReactNode })
       addURLAnalysis,
       updateURLAnalysis,
       removeURLAnalysis,
+      addToSelectionStack,
+      getSelectionStack,
+      clearSelectionStack,
+      resetSelectionStack,
       reset,
       resetInputs,
       resetAgentResponses,
@@ -249,6 +311,10 @@ export function WizardStoreProvider({ children }: { children: React.ReactNode })
       addURLAnalysis,
       updateURLAnalysis,
       removeURLAnalysis,
+      addToSelectionStack,
+      getSelectionStack,
+      clearSelectionStack,
+      resetSelectionStack,
       reset,
       resetInputs,
       resetAgentResponses,

@@ -121,7 +121,49 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
 
   useEffect(() => {
     wizardStore.setInput("productName", productName);
-  }, [productName]);
+    
+    // Add or update first pick to selection stack when productName is set
+    if (productName && productName.trim() !== "") {
+      const stack = wizardStore.getSelectionStack();
+      const firstPickIndex = stack.findIndex(item => item.id === "first-pick");
+      
+      // Determine icon and color based on type
+      const icon = type === "producto" ? "Package" : "Briefcase";
+      const color = type === "producto" ? "#3B82F6" : "#10B981";
+      const text = type === "producto" ? "Producto" : "Servicio";
+      const firstPickItem = {
+        id: "first-pick",
+        text: `${text}: ${productName}`,
+        icon: icon,
+        color: color,
+      };
+      
+      // Preserve brand logo at the beginning
+      const brandLogo = stack.find(item => item.id === "brand-logo");
+      const otherItems = stack.filter(item => item.id !== "first-pick" && item.id !== "brand-logo");
+      
+      if (firstPickIndex === -1) {
+        // Add first pick after brand logo
+        const updatedStack = brandLogo 
+          ? [brandLogo, firstPickItem, ...otherItems]
+          : [firstPickItem, ...otherItems];
+        wizardStore.setAgentResponse("selectionStack", updatedStack);
+      } else {
+        // Update existing first pick, keeping brand logo first
+        const updatedStack = brandLogo
+          ? [brandLogo, firstPickItem, ...otherItems]
+          : [firstPickItem, ...otherItems];
+        wizardStore.setAgentResponse("selectionStack", updatedStack);
+      }
+    } else {
+      // Remove first pick if productName is cleared
+      const stack = wizardStore.getSelectionStack();
+      const updatedStack = stack.filter(item => item.id !== "first-pick");
+      if (updatedStack.length !== stack.length) {
+        wizardStore.setAgentResponse("selectionStack", updatedStack);
+      }
+    }
+  }, [productName, type]);
 
   useEffect(() => {
     onAnalyzingChange?.(analyzingUrls.size > 0);
@@ -208,6 +250,21 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
 
       if (data.brandLogoUrl) {
         setGlobalBrandLogo(data.brandLogoUrl);
+        
+        // Add brand logo to selection stack as first item
+        const currentStack = wizardStore.getSelectionStack();
+        const logoExists = currentStack.some(item => item.id === "brand-logo");
+        
+        if (!logoExists) {
+          const logoItem = {
+            id: "brand-logo",
+            text: "Marca",
+            icon: "Image", // Fallback icon, but we'll render the actual logo
+            color: "#6366F1", // Default indigo color
+          };
+          // Add logo at the very beginning of the stack
+          wizardStore.setAgentResponse("selectionStack", [logoItem, ...currentStack]);
+        }
       }
 
       if (Array.isArray(data.images) && data.images.length > 0) {

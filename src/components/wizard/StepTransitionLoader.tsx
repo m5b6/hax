@@ -20,8 +20,9 @@ export function StepTransitionLoader({
   className,
   gradientColors: customGradientColors,
 }: StepTransitionLoaderProps) {
-  const { brandColors } = useBrand();
+  const { brandColors, brandLogoUrl } = useBrand();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const isInlineSvgLogo = brandLogoUrl?.trim().startsWith("<svg");
   
   // Use custom colors, brand colors, or default chromatic gradient
   const gradientColors = customGradientColors || (brandColors && brandColors.length >= 2
@@ -42,7 +43,7 @@ export function StepTransitionLoader({
 
   return (
     <div className={`flex flex-col items-center justify-center py-16 space-y-8 min-h-[400px] ${className || ""}`}>
-      {/* Subtle liquid glass orb */}
+      {/* Brand Logo Spinner */}
       <div className="relative w-20 h-20 flex items-center justify-center">
         {/* Outer subtle glow */}
         <motion.div
@@ -61,74 +62,77 @@ export function StepTransitionLoader({
           }}
         />
         
-        {/* Thin rotating ring */}
+        {/* Spinning ring around logo */}
         <motion.div
           className="absolute inset-0 rounded-full"
           style={{
-            border: `1px solid ${gradientColors[0]}25`,
+            border: `2px solid ${gradientColors[0]}30`,
+            borderTopColor: gradientColors[0],
+            borderRightColor: gradientColors[1] || gradientColors[0],
           }}
           animate={{
             rotate: 360,
           }}
           transition={{
-            duration: 12,
+            duration: 2,
             repeat: Infinity,
             ease: "linear",
           }}
         />
         
-        {/* Inner glass circle - very subtle */}
+        {/* Spinning logo container */}
         <motion.div
-          className="absolute inset-[25%] rounded-full backdrop-blur-md"
+          className="w-16 h-16 rounded-full bg-white flex items-center justify-center overflow-hidden relative z-10"
           style={{
-            background: `linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))`,
-            border: `1px solid rgba(255, 255, 255, 0.15)`,
             boxShadow: `
-              inset 0 1px 0 rgba(255, 255, 255, 0.2),
-              0 0 20px ${gradientColors[0]}10
+              0 8px 24px rgba(0, 0, 0, 0.15),
+              0 4px 12px rgba(0, 0, 0, 0.1),
+              0 2px 6px rgba(0, 0, 0, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.9)
             `,
+            border: "1px solid rgba(255, 255, 255, 0.7)",
           }}
           animate={{
-            rotate: [0, 360],
+            rotate: 360,
           }}
           transition={{
             duration: 8,
             repeat: Infinity,
             ease: "linear",
           }}
-        />
-        
-        {/* Small chromatic accent dots - very subtle */}
-        {gradientColors.slice(0, 3).map((color, idx) => {
-          const angle = (idx * 120 - 90) * (Math.PI / 180);
-          const radius = 30;
-          const x = Math.cos(angle) * radius;
-          const y = Math.sin(angle) * radius;
-          
-          return (
+        >
+          {brandLogoUrl ? (
+            isInlineSvgLogo ? (
+              <div
+                className="w-[85%] h-[85%] text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
+                dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
+              />
+            ) : (
+              <img
+                src={brandLogoUrl}
+                alt="Logo"
+                className="w-[85%] h-[85%] object-contain"
+                referrerPolicy="no-referrer"
+              />
+            )
+          ) : (
+            /* Fallback: Thin rotating ring if no logo */
             <motion.div
-              key={idx}
-              className="absolute w-1.5 h-1.5 rounded-full"
+              className="absolute inset-0 rounded-full"
               style={{
-                backgroundColor: color,
-                left: `calc(50% + ${x}px)`,
-                top: `calc(50% + ${y}px)`,
-                transform: "translate(-50%, -50%)",
-                opacity: 0.4,
+                border: `2px solid ${gradientColors[0]}40`,
               }}
               animate={{
-                scale: [1, 1.3, 1],
-                opacity: [0.3, 0.5, 0.3],
+                rotate: 360,
               }}
               transition={{
-                duration: 2.5,
+                duration: 3,
                 repeat: Infinity,
-                delay: idx * 0.4,
-                ease: "easeInOut",
+                ease: "linear",
               }}
             />
-          );
-        })}
+          )}
+        </motion.div>
       </div>
       
       {/* Text content */}

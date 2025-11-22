@@ -23,13 +23,13 @@ const analysisSchema = z.object({
   summary: z.string(),
   concreteProducts: z.array(z.object({
     name: z.string(),
-    icon: z.string().optional(),
-    color: z.string().optional(),
+    icon: z.string().nullable(),
+    color: z.string().nullable(),
   })).max(10),
   concreteServices: z.array(z.object({
     name: z.string(),
-    icon: z.string().optional(),
-    color: z.string().optional(),
+    icon: z.string().nullable(),
+    color: z.string().nullable(),
   })).max(10),
   primaryColor: z.string().nullable(),
   secondaryColor: z.string().nullable(),

@@ -92,17 +92,53 @@ LAS 3 PREGUNTAS OBLIGATORIAS:
 LIBERTAD CREATIVA Y ESTILO:
 - **SÉ CREATIVO Y BOLD**: No te limites a opciones genéricas. Piensa fuera de la caja y crea opciones que realmente resuenen con el negocio específico del usuario.
 - **COLORES POPPY Y MEMORABLES**: Usa colores vibrantes, saturados y distintivos. Evita colores aburridos o genéricos. Cada color debe tener personalidad y hacer que la opción se destaque.
-- **HEADERS ULTRA-CORTOS**: Los títulos deben ser MÁXIMO 15 caracteres, preferiblemente 1-2 palabras. Piensa en palabras punchy, impactantes y memorables. Ejemplos: "Rápido", "Suave", "Bold", "Premium", "Cálido", "Fresco".
+- **HEADERS ÚNICOS Y CONTEXTUALES**: Los títulos (campo "text") deben ser MÁXIMO 15 caracteres, preferiblemente 1-2 palabras. DEBEN SER ÚNICOS para cada negocio - NUNCA reutilices headers genéricos como "Digital Pro", "Cálido Humano", "Acción Ya", etc. Cada header debe reflejar el negocio específico del usuario.
 - **ICONOS CREATIVOS**: Elige iconos que realmente capturen la esencia única de cada opción. No uses siempre los mismos iconos obvios - piensa en qué icono mejor representa la personalidad de esa opción específica para este negocio.
+
+INSTRUCCIONES CRÍTICAS SOBRE HEADERS/TÍTULOS:
+⚠️ **REGLA ABSOLUTA**: NUNCA uses los mismos headers/títulos para diferentes negocios. Cada negocio debe tener headers completamente únicos y contextuales.
+
+**Para ESTILO VISUAL (pregunta 1):**
+- NO uses: "Digital Pro", "Cálido Humano", "Acción Ya", "Moderno", "Natural", "Directo" (estos son genéricos)
+- SÍ crea headers basados en el negocio específico:
+  - Para clínicas dentales: "Precisión", "Cálido", "Urgente"
+  - Para salones de belleza: "Glamour", "Acogedor", "Flash"
+  - Para gimnasios: "Power", "Equilibrio", "Impacto"
+  - Para inmobiliarias: "Premium", "Cercano", "Directo"
+  - Para servicios de bienestar: "Suave", "Humano", "Rápido"
+  - Piensa en palabras que capturen la ESENCIA del negocio + el estilo visual
+
+**Para RITMO VISUAL (pregunta 2):**
+- NO uses: "Rápido", "Medio", "Lento" (demasiado genéricos)
+- SÍ crea headers contextuales:
+  - Para negocios de alta energía: "Turbo", "Fluido", "Sereno"
+  - Para servicios premium: "Épico", "Elegante", "Tranquilo"
+  - Para servicios de bienestar: "Dinámico", "Armónico", "Calma"
+  - Adapta según el ritmo que mejor encaje con el negocio
+
+**Para PRESENCIA HUMANA (pregunta 3):**
+- NO uses: "Alta", "Media", "Cero" (demasiado genéricos)
+- SÍ crea headers descriptivos:
+  - "Rostros", "Mixto", "Espacios"
+  - "Personas", "Equilibrio", "Minimal"
+  - "Humanos", "Balance", "Objetos"
+  - Piensa en qué mejor describe la presencia para este negocio específico
+
+**EJEMPLOS DE VARIACIÓN:**
+- Negocio: Clínica dental → Headers: "Precisión" / "Fluido" / "Rostros"
+- Negocio: Salón de belleza → Headers: "Glamour" / "Dinámico" / "Personas"
+- Negocio: Gimnasio → Headers: "Power" / "Turbo" / "Mixto"
+- Negocio: Inmobiliaria → Headers: "Premium" / "Elegante" / "Espacios"
 
 INSTRUCCIONES CRÍTICAS:
 1. **Contextualiza cada opción** según el negocio específico del usuario - adapta nombres, colores e iconos al contexto
-2. En "whyItWorks", explica POR QUÉ esa opción funciona para SU negocio en particular
-3. En "description", adapta el mensaje típico al contexto del negocio
-4. En "usefulFor", menciona si su tipo de negocio encaja en esa categoría
-5. Usa la información de las URLs analizadas para hacer las opciones más específicas
-6. Si detectaste colores de marca, puedes inspirarte en ellos pero SÉ CREATIVO - no los copies directamente, úsalos como inspiración para crear colores únicos
-7. Si hay productos/servicios concretos, úsalos como ejemplos en las descripciones
+2. **HEADERS ÚNICOS**: Cada header debe ser único para este negocio específico. Analiza el negocio y crea headers que reflejen su identidad única.
+3. En "whyItWorks", explica POR QUÉ esa opción funciona para SU negocio en particular
+4. En "description", adapta el mensaje típico al contexto del negocio
+5. En "usefulFor", menciona si su tipo de negocio encaja en esa categoría
+6. Usa la información de las URLs analizadas para hacer las opciones más específicas
+7. Si detectaste colores de marca, puedes inspirarte en ellos pero SÉ CREATIVO - no los copies directamente, úsalos como inspiración para crear colores únicos
+8. Si hay productos/servicios concretos, úsalos como ejemplos en las descripciones
 
 GUÍAS DE INSPIRACIÓN (NO RESTRICCIONES):
 - **Estilo Moderno/Digital**: Colores como azules eléctricos, cianes brillantes, púrpuras modernos. Iconos como Sparkles, Zap, Layers, Rocket

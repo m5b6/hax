@@ -116,7 +116,6 @@ export const StepFinal = () => {
       <StepTransitionLoader
         items={loadingItems}
         title="Creando tu campaña..."
-        subtitle={data.name ? `Personalizando para ${data.name}` : undefined}
         gradientColors={gradientColors}
       />
     );

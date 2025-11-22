@@ -4,6 +4,7 @@ import * as LucideIcons from "lucide-react";
 import { ArrowRight, Sparkles, Check, ArrowLeft, Wand2, Search, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { useBrand } from "@/contexts/BrandContext";
 import { StepTransitionLoader } from "./StepTransitionLoader";
 
 interface StepStrategyProps {
@@ -71,12 +72,12 @@ const getIconForOption = (id: string): React.ComponentType<any> => {
 
 export const StepStrategy = ({ onNext }: StepStrategyProps) => {
   const wizardStore = useWizardStore();
+  const { brandColors } = useBrand();
   const storedMCQAnswers = wizardStore.getAgentResponse("mcqAnswers") || {};
   const storedMCQQuestions = wizardStore.getAgentResponse("mcqQuestions") || [];
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>(storedMCQAnswers as Record<string, string>);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [historyStack, setHistoryStack] = useState<{id: string, icon: any, color: string}[]>([]);
   
   // Get previous data for display
   const previousData = {
@@ -123,17 +124,37 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
     }
   }, [mcqQuestions, wizardStore]);
   
-  const handleSelect = (optionId: string, optionColor: string, optionIcon: string) => {
+  const handleSelect = (optionId: string, optionColor: string, optionIcon: string, optionText: string) => {
     if (!currentQuestion) return;
     
     const newAnswers = { ...answers, [currentQuestion.id]: optionId };
     setAnswers(newAnswers);
     wizardStore.setAgentResponse("mcqAnswers", newAnswers);
     
-    const Icon = optionIcon ? getIconByName(optionIcon) : getIconForOption(optionId);
-    const newStack = historyStack.filter((_, i) => i < currentQuestionIndex);
-    newStack.push({ id: optionId, icon: Icon, color: optionColor });
-    setHistoryStack(newStack);
+    // Get current stack and preserve brand logo and first pick order
+    const currentStack = wizardStore.getSelectionStack();
+    const brandLogo = currentStack.find(item => item.id === "brand-logo");
+    const firstPick = currentStack.find(item => item.id === "first-pick");
+    const mcqStack = currentStack.filter(item => item.id !== "first-pick" && item.id !== "brand-logo");
+    
+    // Filter MCQ stack to only include selections up to current question index
+    const newMcqStack = mcqStack.filter((_, i) => i < currentQuestionIndex);
+    
+    // Add new MCQ selection
+    newMcqStack.push({
+      id: optionId,
+      text: optionText,
+      icon: optionIcon || "",
+      color: optionColor,
+    });
+    
+    // Rebuild stack: brand logo first, then first pick, then MCQ selections
+    const updatedStack = [
+      ...(brandLogo ? [brandLogo] : []),
+      ...(firstPick ? [firstPick] : []),
+      ...newMcqStack
+    ];
+    wizardStore.setAgentResponse("selectionStack", updatedStack);
     
     setTimeout(() => {
         if (currentQuestionIndex < totalQuestions - 1) {
@@ -154,7 +175,18 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
   const handleBack = () => {
     if (currentQuestionIndex > 0) {
         setCurrentQuestionIndex((prev) => prev - 1);
-        setHistoryStack(prev => prev.slice(0, -1));
+        // Remove last MCQ selection from stack (preserve brand logo and first pick)
+        const currentStack = wizardStore.getSelectionStack();
+        const brandLogo = currentStack.find(item => item.id === "brand-logo");
+        const firstPick = currentStack.find(item => item.id === "first-pick");
+        const mcqStack = currentStack.filter(item => item.id !== "first-pick" && item.id !== "brand-logo");
+        const updatedMcqStack = mcqStack.slice(0, -1);
+        const newStack = [
+          ...(brandLogo ? [brandLogo] : []),
+          ...(firstPick ? [firstPick] : []),
+          ...updatedMcqStack
+        ];
+        wizardStore.setAgentResponse("selectionStack", newStack);
     }
   };
 
@@ -168,48 +200,95 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
           { text: "Analizando tu negocio", icon: Zap },
         ]}
         title="Preparando tu estrategia"
-        subtitle={previousData.name ? `Personalizando para ${previousData.name}` : "Analizando tu negocio..."}
       />
     );
   }
 
+  // Create gradient from brand colors or use default
+  const getProgressGradient = () => {
+    if (brandColors && brandColors.length > 0) {
+      // Use brand colors for gradient
+      const gradientColors = brandColors.length === 1 
+        ? `${brandColors[0]}, ${brandColors[0]}`
+        : brandColors.join(", ");
+      return `linear-gradient(to right, ${gradientColors})`;
+    }
+    // Default gradient
+    return "linear-gradient(to right, #3B82F6, #8B5CF6, #EC4899)";
+  };
+
+  // Get color for a specific step index
+  const getStepColor = (idx: number) => {
+    if (brandColors && brandColors.length > 0) {
+      return brandColors[Math.min(idx, brandColors.length - 1)];
+    }
+    return "#3B82F6";
+  };
+  
   return (
     <div className="w-full relative">
         {/* Header with Progress */}
-        <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Paso {currentQuestionIndex + 1} de {totalQuestions}
-                </span>
-                <div className="h-1 w-16 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div 
-                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${((currentQuestionIndex + 1) / totalQuestions) * 100}%` }}
+        <div className="flex items-center gap-4 mb-6">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">
+                Paso {currentQuestionIndex + 1} de {totalQuestions}
+            </span>
+            
+            {/* Progress Bar with Numbered Circles */}
+            <div className="flex-1 flex items-center gap-2">
+              {[1, 2, 3].slice(0, totalQuestions).map((stepNum, idx) => {
+                // Step is completed only when we've moved PAST it (not when we're currently on it)
+                // stepNum is 1-indexed, currentQuestionIndex is 0-indexed
+                // So stepNum 1 corresponds to currentQuestionIndex 0, stepNum 2 to index 1, etc.
+                const isCompleted = stepNum <= currentQuestionIndex;
+                const isCurrent = stepNum === currentQuestionIndex + 1;
+                const stepColor = getStepColor(idx);
+                
+                return (
+                  <React.Fragment key={stepNum}>
+                    {/* Step Circle */}
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <motion.div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 relative overflow-hidden"
+                        style={{
+                          backgroundColor: isCompleted ? stepColor : "transparent",
+                          borderColor: isCompleted || isCurrent ? stepColor : "#E2E8F0",
+                          color: isCompleted ? "white" : "#94A3B8",
+                          boxShadow: isCompleted 
+                            ? `0 2px 8px ${stepColor}40`
+                            : "none",
+                        }}
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: 1 }}
                         transition={{ duration: 0.3 }}
-                    />
-                </div>
-            </div>
-
-            {/* History Stack */}
-            <div className="flex -space-x-2">
-                <AnimatePresence>
-                    {historyStack.map((item, idx) => (
+                      >
+                        {isCompleted ? (
+                          <Check className="w-4 h-4" strokeWidth={3} />
+                        ) : (
+                          <span>{stepNum}</span>
+                        )}
+                      </motion.div>
+                    </div>
+                    
+                    {/* Connecting Bar */}
+                    {idx < totalQuestions - 1 && (
+                      <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden relative">
                         <motion.div
-                            key={idx}
-                            initial={{ opacity: 0, scale: 0, x: 10, rotate: -180 }}
-                            animate={{ opacity: 1, scale: 1, x: 0, rotate: 0 }}
-                            exit={{ opacity: 0, scale: 0, x: -10 }}
-                            className="w-9 h-9 rounded-full shadow-md flex items-center justify-center z-10 border-2"
-                            style={{
-                              backgroundColor: item.color || "#3B82F6",
-                              borderColor: item.color || "#3B82F6",
-                            }}
-                        >
-                            <item.icon className="w-4 h-4 text-white" />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+                          className="h-full rounded-full"
+                          style={{
+                            background: getProgressGradient(),
+                          }}
+                          initial={{ width: 0 }}
+                          animate={{ 
+                            // Bar fills when the step before it is completed (we've moved past it)
+                            width: stepNum <= currentQuestionIndex ? "100%" : "0%"
+                          }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
+                        />
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
         </div>
 
@@ -264,7 +343,7 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
               return (
                 <motion.button
                   key={option.id}
-                  onClick={() => handleSelect(option.id, optionColor, option.icon)}
+                  onClick={() => handleSelect(option.id, optionColor, option.icon, option.text)}
                   whileHover={{ scale: 1.005, y: -1 }}
                   whileTap={{ scale: 0.995 }}
                   className={`
