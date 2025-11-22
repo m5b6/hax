@@ -4,12 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Sparkles, Copy, Share2 } from "lucide-react";
 import { motion } from "framer-motion";
 import CircularGallery from "./CircularGallery";
+import { useWizardStore } from "@/contexts/WizardStore";
 
-interface StepFinalProps {
-  data: any;
-}
-
-export const StepFinal = ({ data }: StepFinalProps) => {
+export const StepFinal = () => {
+  const wizardStore = useWizardStore();
+  
+  // Get all data from store
+  const data = {
+    name: wizardStore.getInput("name"),
+    identity: wizardStore.getInput("identity"),
+    urls: wizardStore.getInput("urls"),
+    type: wizardStore.getInput("type"),
+    productName: wizardStore.getInput("productName"),
+    strategy: wizardStore.getAgentResponse("strategyAnswers"),
+    urlAnalyses: wizardStore.getAgentResponse("urlAnalyses"),
+  };
   const [isGenerating, setIsGenerating] = useState(true);
 
   useEffect(() => {

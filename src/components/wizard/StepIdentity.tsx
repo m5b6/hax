@@ -7,11 +7,12 @@ import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, Mes
 import { motion, AnimatePresence } from "framer-motion";
 import { InsightsChip } from "./InsightsChip";
 import { useBrand } from "@/contexts/BrandContext";
+import { useWizardStore } from "@/contexts/WizardStore";
+import { URLAnalysis, Insight } from "@/types/wizard";
 
 interface StepIdentityProps {
-  onNext: (data: any) => void;
+  onNext: () => void;
   onAnalyzingChange?: (isAnalyzing: boolean) => void;
-  onNameChange?: (name: string) => void;
 }
 
 interface ProductServiceOption {
@@ -20,25 +21,7 @@ interface ProductServiceOption {
   source: string;
 }
 
-type InsightType = "style" | "info" | "products" | "services" | "target_audience" | "tone" | "pricing" | "features" | "integrations" | "tech_stack";
-
-interface Insight {
-  type: InsightType;
-  label: string;
-  value: string;
-  confidence?: "high" | "medium" | "low";
-}
-
-interface URLAnalysis {
-  url: string;
-  insights: Insight[];
-  logoUrl?: string | null;
-  primaryColor?: string | null;
-  secondaryColor?: string | null;
-  images?: string[];
-}
-
-const insightIcons: Record<InsightType, React.ComponentType<any>> = {
+const insightIcons: Record<Insight["type"], React.ComponentType<any>> = {
   style: Palette,
   info: Info,
   products: Package,
@@ -51,7 +34,7 @@ const insightIcons: Record<InsightType, React.ComponentType<any>> = {
   tech_stack: Code,
 };
 
-const insightColors: Record<InsightType, string> = {
+const insightColors: Record<Insight["type"], string> = {
   style: "from-pink-500 to-rose-500",
   info: "from-blue-500 to-cyan-500",
   products: "from-purple-500 to-indigo-500",
@@ -64,44 +47,59 @@ const insightColors: Record<InsightType, string> = {
   tech_stack: "from-slate-500 to-gray-600",
 };
 
-export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepIdentityProps) => {
+export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) => {
+  const wizardStore = useWizardStore();
   const { setBrandColors, setBrandLogoUrl: setGlobalBrandLogo, setBrandImages, brandImages } = useBrand();
-  const [name, setName] = useState("");
-  const [identity, setIdentity] = useState("");
-  const [urls, setUrls] = useState<string[]>([""]);
-  const [type, setType] = useState<"producto" | "servicio">("producto");
-  const [productName, setProductName] = useState("");
-  const [urlAnalyses, setUrlAnalyses] = useState<Map<string, URLAnalysis>>(new Map());
+  
+  // Get initial values from store
+  const storedName = wizardStore.getInput("name") || "";
+  const storedIdentity = wizardStore.getInput("identity") || "";
+  const storedUrls = wizardStore.getInput("urls") || [""];
+  const storedType = wizardStore.getInput("type") || "producto";
+  const storedProductName = wizardStore.getInput("productName") || "";
+  const storedUrlAnalyses = wizardStore.getAgentResponse("urlAnalyses") || [];
+  
+  const [name, setName] = useState(storedName);
+  const [identity, setIdentity] = useState(storedIdentity);
+  const [urls, setUrls] = useState<string[]>(storedUrls.length > 0 ? storedUrls : [""]);
+  const [type, setType] = useState<"producto" | "servicio">(storedType as "producto" | "servicio");
+  const [productName, setProductName] = useState(storedProductName);
   const [analyzingUrls, setAnalyzingUrls] = useState<Set<string>>(new Set());
   const [discoveredProducts, setDiscoveredProducts] = useState<ProductServiceOption[]>([]);
   const [discoveredServices, setDiscoveredServices] = useState<ProductServiceOption[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
-  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
+  
+  // Create a Map from stored analyses for easier lookup
+  const urlAnalysesMap = new Map<string, URLAnalysis>(
+    storedUrlAnalyses.map((analysis: URLAnalysis) => [analysis.url, analysis])
+  );
+  const [urlAnalyses, setUrlAnalyses] = useState<Map<string, URLAnalysis>>(urlAnalysesMap);
+
+  // Sync local state to store
+  useEffect(() => {
+    wizardStore.setInput("name", name);
+  }, [name]);
 
   useEffect(() => {
-    onNameChange?.(name);
-  }, [name, onNameChange]);
+    wizardStore.setInput("identity", identity);
+  }, [identity]);
+
+  useEffect(() => {
+    wizardStore.setInput("urls", urls.filter((u) => u));
+  }, [urls]);
+
+  useEffect(() => {
+    wizardStore.setInput("type", type);
+  }, [type]);
+
+  useEffect(() => {
+    wizardStore.setInput("productName", productName);
+  }, [productName]);
 
   useEffect(() => {
     onAnalyzingChange?.(analyzingUrls.size > 0);
   }, [analyzingUrls.size, onAnalyzingChange]);
-
-  const addUrl = () => setUrls([...urls, ""]);
-  const removeUrl = (index: number) => {
-    const removedUrl = urls[index];
-    setUrls(urls.filter((_, i) => i !== index));
-    if (removedUrl) {
-      const newAnalyses = new Map(urlAnalyses);
-      newAnalyses.delete(removedUrl);
-      setUrlAnalyses(newAnalyses);
-    }
-  };
-  const updateUrl = (index: number, value: string) => {
-    const newUrls = [...urls];
-    newUrls[index] = value;
-    setUrls(newUrls);
-  };
 
   const formatUrl = (url: string): string => {
     let formatted = url.trim();
@@ -112,6 +110,24 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       formatted = formatted + '/';
     }
     return formatted;
+  };
+
+  const addUrl = () => setUrls([...urls, ""]);
+  const removeUrl = (index: number) => {
+    const removedUrl = urls[index];
+    const formattedUrl = removedUrl ? formatUrl(removedUrl) : null;
+    setUrls(urls.filter((_, i) => i !== index));
+    if (formattedUrl) {
+      const newAnalyses = new Map(urlAnalyses);
+      newAnalyses.delete(formattedUrl);
+      setUrlAnalyses(newAnalyses);
+      wizardStore.removeURLAnalysis(formattedUrl);
+    }
+  };
+  const updateUrl = (index: number, value: string) => {
+    const newUrls = [...urls];
+    newUrls[index] = value;
+    setUrls(newUrls);
   };
 
   const analyzeUrl = async (url: string, index: number) => {
@@ -137,14 +153,21 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       const data = await response.json();
       
       if (data && data.insights && Array.isArray(data.insights)) {
-        setUrlAnalyses((prev) => new Map(prev).set(formattedUrl, {
+        const analysis: URLAnalysis = {
           url: formattedUrl,
           insights: data.insights,
           logoUrl: data.brandLogoUrl ?? null,
           primaryColor: data.primaryColor ?? null,
           secondaryColor: data.secondaryColor ?? null,
           images: Array.isArray(data.images) ? data.images : [],
-        }));
+          summary: data.summary,
+          concreteProducts: data.concreteProducts,
+          concreteServices: data.concreteServices,
+          colors: data.colors,
+        };
+        
+        setUrlAnalyses((prev) => new Map(prev).set(formattedUrl, analysis));
+        wizardStore.addURLAnalysis(analysis);
       }
 
       const colorCandidates = [
@@ -158,7 +181,6 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
       }
 
       if (data.brandLogoUrl) {
-        setBrandLogoUrl(data.brandLogoUrl);
         setGlobalBrandLogo(data.brandLogoUrl);
       }
 
@@ -239,16 +261,8 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
 
   const handleNext = () => {
     if (name && identity && productName) {
-      onNext({ 
-        name,
-        identity, 
-        urls: urls.filter((u) => u), 
-        type, 
-        productName, 
-        urlAnalyses: Array.from(urlAnalyses.values()),
-        brandLogoUrl,
-        brandImages,
-      });
+      // All data is already synced to store via useEffect hooks
+      onNext();
     }
   };
 

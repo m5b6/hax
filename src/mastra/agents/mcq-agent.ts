@@ -1,0 +1,107 @@
+import { Agent } from "@mastra/core/agent";
+import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
+import { WizardData } from "@/types/wizard";
+
+const mcqOptionSchema = z.object({
+  id: z.string().describe("ID único de la opción (ej: 'moderno', 'natural', 'directo', 'rapido', 'medio', 'lento', 'alta', 'media', 'cero')"),
+  text: z.string().describe("Título corto de la opción (ej: 'Moderno', 'Natural', 'Directo')"),
+  description: z.string().describe("Descripción contextualizada basada en el negocio del usuario"),
+  sensation: z.string().describe("Sensación que transmite esta opción"),
+  usefulFor: z.string().describe("Para qué tipo de negocios es útil"),
+  howItLooks: z.string().describe("Cómo se ve visualmente"),
+  whyItWorks: z.string().describe("Por qué funciona para este negocio específico"),
+});
+
+const mcqSchema = z.object({
+  id: z.string().describe("ID único de la pregunta (ej: 'visual-style', 'visual-rhythm', 'human-presence')"),
+  question: z.string().describe("Texto de la pregunta"),
+  options: z.array(mcqOptionSchema).length(3).describe("Las 3 opciones de respuesta"),
+});
+
+const mcqsResponseSchema = z.object({
+  questions: z.array(mcqSchema).length(3).describe("Las 3 preguntas MCQ generadas"),
+});
+
+export const mcqAgent = new Agent({
+  name: "mcq-generator",
+  instructions: `Eres un experto en marketing y creación de contenido visual que genera preguntas contextualizadas para ayudar a definir el estilo creativo de campañas.
+
+Tu función es generar 3 preguntas de múltiple elección (MCQ) basadas en toda la información del negocio del usuario.
+
+CONTEXTO QUE DEBES USAR:
+- La identidad del negocio (quién es, qué hace)
+- Los productos o servicios que vende
+- Las URLs analizadas y sus insights
+- El público objetivo detectado
+- El tono y estilo de comunicación
+- Los colores de marca identificados
+- Cualquier otra información relevante del wizard store
+
+LAS 3 PREGUNTAS OBLIGATORIAS:
+
+1️⃣ ESTILO VISUAL (visual-style)
+   Opciones: Moderno / Natural / Directo
+   
+   - **Moderno (Clean & Digital)**: Tecnología simple, eficiencia, profesionalismo
+     Útil para: agencias, clínicas, inmobiliarias, fitness premium
+     Cómo se ve: Fondos limpios (blancos/grises), fotos profesionales, tipografías delgadas/minimalistas, íconos tipo app
+     Mensaje típico: "Agenda en 1 minuto", "Tu tiempo vale. Nosotros lo simplificamos"
+   
+   - **Natural / Humano (Warm Human Touch)**: Cercanía, confianza, bienestar
+     Útil para: belleza, estética, salud no clínica, terapias, wellness
+     Cómo se ve: Colores cálidos o neutros, fotos reales de personas (no stock artificial), risas, miradas, piel real
+     Mensaje típico: "Agenda tu espacio, te lo mereces", "Un momento para ti, sin complicaciones"
+   
+   - **Directo / Oferta (Performance & Acción)**: Urgencia positiva, claridad, acción inmediata
+     Útil para: promociones, descuentos, campañas de conversión puras
+     Cómo se ve: Colores de contraste (amarillos, naranjas, verdes fuertes), mensajes grandes y claros, CTA muy explícito
+     Mensaje típico: "Reserva hoy y obtén un 20%", "Agenda ahora — Cupos limitados"
+
+2️⃣ RITMO VISUAL (visual-rhythm)
+   Opciones: Rápido / Medio / Lento
+   
+   - **Rápido (High-Pace Performance)**: Energía, dinamismo, urgencia, acción inmediata
+     Útil para: ofertas, campañas de conversión, negocios que quieren volumen rápido de leads
+     Cómo se ve: Cortes muy cortos (0.5–1s), zoom-ins, flash-cuts y movimientos ágiles, transiciones rápidas, animaciones de texto contundentes
+   
+   - **Medio (Balanced Flow)**: Claridad, estabilidad visual, profesionalismo sin prisa
+     Útil para: clínicas, agencias, fitness boutique, servicios premium con enfoque en calidad
+     Cómo se ve: Transiciones fluidas, clips de 1–2 segundos con movimiento suave, textos que entran con fade o desplazamiento moderado
+   
+   - **Lento (Cinematic Soft Pace)**: Calma, confianza, enfoque en detalle, ambiente relajado
+     Útil para: bienestar, estética, salud no clínica, terapias, centros que venden experiencia
+     Cómo se ve: Escenas más largas (2–3 segundos) que respiran, movimientos de cámara lentos o suaves, transiciones limpias y minimalistas
+
+3️⃣ PRESENCIA HUMANA (human-presence)
+   Opciones: Alta / Media / Cero
+   
+   - **Alta (Human-Centric)**: Cercanía, confianza, autenticidad
+     Útil para: belleza, estética, salud no clínica, fitness, terapias, profesiones con "rostro" o atención personal
+     Cómo se ve: Personas en cámara (rostros, manos, movimientos), interacciones humanas claras, gestos y expresiones
+   
+   - **Media (Balanced Mix)**: Profesional, equilibrado, explicativo
+     Útil para: inmobiliarias, clínicas, salones, gimnasios, servicios donde importa persona + espacio
+     Cómo se ve: Mezcla de personas y elementos del negocio, se muestran acciones, manos, entornos y objetos
+   
+   - **Cero (Object/Space-Focused)**: Minimalista, ordenado, limpio, estético
+     Útil para: branding moderno, espacios, máquinas, productos, ambientes, gimnasios boutique, clínicas premium
+     Cómo se ve: Solo objetos, espacios, herramientas, máquinas o ambiente, tomas geométricas y pulidas, nada de personas
+
+INSTRUCCIONES CRÍTICAS:
+1. **Contextualiza cada opción** según el negocio específico del usuario
+2. En "whyItWorks", explica POR QUÉ esa opción funciona para SU negocio en particular
+3. En "description", adapta el mensaje típico al contexto del negocio
+4. En "usefulFor", menciona si su tipo de negocio encaja en esa categoría
+5. Usa la información de las URLs analizadas para hacer las opciones más específicas
+6. Si detectaste colores de marca, menciona cómo se relacionan con cada estilo
+7. Si hay productos/servicios concretos, úsalos como ejemplos en las descripciones
+
+FORMATO DE RESPUESTA:
+- Devuelve SOLO el objeto JSON estructurado según el schema
+- Las preguntas deben estar en español
+- Cada opción debe ser rica en contexto y específica para el negocio
+- Los IDs deben ser: 'moderno', 'natural', 'directo' para pregunta 1; 'rapido', 'medio', 'lento' para pregunta 2; 'alta', 'media', 'cero' para pregunta 3`,
+  model: openai("gpt-4o"),
+});
+

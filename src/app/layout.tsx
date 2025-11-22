@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { BrandProvider } from "@/contexts/BrandContext";
+import { WizardStoreProvider } from "@/contexts/WizardStore";
 import DynamicColorBends from "@/components/DynamicColorBends";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -25,10 +26,12 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased text-slate-900 min-h-screen overflow-x-hidden selection:bg-blue-100 selection:text-blue-900`}>
         <BrandProvider>
-          <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-            <DynamicColorBends />
-          </div>
-          {children}
+          <WizardStoreProvider>
+            <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+              <DynamicColorBends />
+            </div>
+            {children}
+          </WizardStoreProvider>
         </BrandProvider>
       </body>
     </html>

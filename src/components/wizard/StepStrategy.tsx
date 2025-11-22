@@ -2,11 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Check, ArrowLeft, Target, Users, MessageSquare, Zap, TrendingUp, Heart, Globe, Lightbulb } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface StepStrategyProps {
-  onNext: (data: any) => void;
-  previousData: any;
-}
+import { useWizardStore } from "@/contexts/WizardStore";
 
 // Helper to get icon component
 const getIconForOption = (id: string) => {
@@ -58,11 +54,20 @@ const MOCK_AI_QUESTIONS = [
   }
 ];
 
-export const StepStrategy = ({ onNext, previousData }: StepStrategyProps) => {
+export const StepStrategy = ({ onNext }: StepStrategyProps) => {
+  const wizardStore = useWizardStore();
+  const storedAnswers = wizardStore.getAgentResponse("strategyAnswers") || {};
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>(storedAnswers as Record<string, string>);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [historyStack, setHistoryStack] = useState<{id: string, icon: any}[]>([]);
+  
+  // Get previous data for display
+  const previousData = {
+    name: wizardStore.getInput("name"),
+    type: wizardStore.getInput("type"),
+    productName: wizardStore.getInput("productName"),
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,6 +82,7 @@ export const StepStrategy = ({ onNext, previousData }: StepStrategyProps) => {
   const handleSelect = (optionId: string) => {
     const newAnswers = { ...answers, [currentQuestion.id]: optionId };
     setAnswers(newAnswers);
+    wizardStore.setAgentResponse("strategyAnswers", newAnswers);
     
     const Icon = getIconForOption(optionId);
     const newStack = historyStack.filter((_, i) => i < currentQuestionIndex);
@@ -94,7 +100,8 @@ export const StepStrategy = ({ onNext, previousData }: StepStrategyProps) => {
     if (currentQuestionIndex < totalQuestions - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
-      onNext({ ...previousData, strategy: answers });
+      // Answers are already synced to store via handleSelect
+      onNext();
     }
   };
   
