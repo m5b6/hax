@@ -46,7 +46,7 @@ export const StepFinal = () => {
   const wizardStore = useWizardStore();
   const { brandLogoUrl, brandColors } = useBrand();
   const brandName = wizardStore.getInput("name") || "";
-  
+
   // Get all data from store
   const data = {
     name: wizardStore.getInput("name"),
@@ -174,7 +174,7 @@ export const StepFinal = () => {
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
-          
+
           // Keep the last incomplete line in buffer
           buffer = lines.pop() || "";
 
@@ -269,14 +269,19 @@ export const StepFinal = () => {
       });
 
       if (!response.ok) throw new Error("Failed to generate posts");
-      
+
       const result = await response.json();
-      
+
       if (result.success && Array.isArray(result.posts)) {
         setGeneratedPosts(result.posts);
         wizardStore.setAgentResponse("generatedPosts", result.posts);
+
+        if (result.videoUrl) {
+          setVideoResult(result.videoUrl);
+          wizardStore.setAgentResponse("videoResult", result.videoUrl);
+        }
       } else {
-          throw new Error(result.error || "Failed to generate posts");
+        throw new Error(result.error || "Failed to generate posts");
       }
     } catch (error: any) {
       console.error("Error generating posts:", error);
@@ -288,10 +293,13 @@ export const StepFinal = () => {
 
   useEffect(() => {
     if (hasGeneratedPostsRef.current) return;
-    
+
     const existingPosts = wizardStore.getAgentResponse("generatedPosts");
+    const existingVideo = wizardStore.getAgentResponse("videoResult");
+
     if (existingPosts) {
       setGeneratedPosts(existingPosts);
+      if (existingVideo) setVideoResult(existingVideo);
       return;
     }
 
@@ -308,10 +316,11 @@ export const StepFinal = () => {
   const [videoResult, setVideoResult] = useState<string | null>(null);
   const hasGeneratedVideoRef = useRef(false);
 
-  // Trigger video generation when prompt is ready
+  // Trigger video generation when prompt is ready AND posts are generated
   useEffect(() => {
-    if (!displayPrompt || isGenerating || hasGeneratedVideoRef.current) return;
-    
+    // Wait for prompt, ensure not already generating, and ensure posts are ready (so we have images)
+    if (!displayPrompt || isGenerating || hasGeneratedVideoRef.current || generatedPosts.length === 0) return;
+
     // Check if we already have a result in store
     const existingVideo = wizardStore.getAgentResponse("videoResult");
     if (existingVideo) {
@@ -324,59 +333,61 @@ export const StepFinal = () => {
 
     const generateVideo = async () => {
       try {
-        // Try to find an image from analysis
-        const analysis = wizardStore.getAgentResponse("urlAnalyses");
+        // Try to find an image from analysis (Logo) or from generated posts
         let imageUrl = "";
-        
-        // Safe navigation to find first valid image
-        if (analysis && Array.isArray(analysis)) {
-            for (const result of analysis) {
-                if (result?.images && result.images.length > 0) {
-                    imageUrl = result.images[0];
-                    break;
-                }
-            }
-        } else if (analysis?.images && analysis.images.length > 0) {
-             imageUrl = analysis.images[0];
+
+        // 1. Try Logo first (as requested)
+        if (brandLogoUrl && !brandLogoUrl.startsWith('<svg')) {
+          imageUrl = brandLogoUrl;
         }
 
-        // If no image found in analysis, use a fallback or let API handle default
-        if (!imageUrl) {
-             // Try to get from urls input directly if it's an image url? 
-             // Unlikely for "urls" input which is usually a website.
-             // We'll let the API use its hardcoded fallback or fail.
-             console.log("No source image found, using API fallback");
+        // 2. If no logo, try first generated post image
+        if (!imageUrl && generatedPosts.length > 0 && generatedPosts[0].imageUrl) {
+          imageUrl = generatedPosts[0].imageUrl;
         }
+
+        // 3. Fallback to analysis images
+        if (!imageUrl) {
+          const analysis = wizardStore.getAgentResponse("urlAnalyses");
+          if (analysis && Array.isArray(analysis)) {
+            for (const result of analysis) {
+              if (result?.images && result.images.length > 0) {
+                imageUrl = result.images[0];
+                break;
+              }
+            }
+          }
+        }
+
+        console.log("Triggering video generation with image:", imageUrl);
 
         const response = await fetch("/api/agent/generate-video", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             promptText: displayPrompt,
-            imageUrl: imageUrl 
+            imageUrl: imageUrl
           }),
         });
 
         if (!response.ok) throw new Error("Failed to generate video");
-        
+
         const data = await response.json();
-        
+
         if (data.output && Array.isArray(data.output) && data.output.length > 0) {
-            const videoUrl = data.output[0];
-            setTimeout(() => {
-              setVideoResult(videoUrl);
-              wizardStore.setAgentResponse("videoResult", videoUrl);
-              setIsGeneratingVideo(false);
-            }, 5000);
+          const videoUrl = data.output[0];
+          setVideoResult(videoUrl);
+          wizardStore.setAgentResponse("videoResult", videoUrl);
         }
       } catch (error) {
         console.error("Error generating video:", error);
+      } finally {
         setIsGeneratingVideo(false);
       }
     };
 
     generateVideo();
-  }, [displayPrompt, isGenerating, wizardStore]);
+  }, [displayPrompt, isGenerating, wizardStore, generatedPosts, brandLogoUrl]);
 
   // Carousel state
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -393,8 +404,8 @@ export const StepFinal = () => {
       >
         <Card className="border-none overflow-hidden rounded-xl bg-white relative transition-shadow duration-700"
           style={{
-            boxShadow: displayPrompt 
-              ? '0 10px 30px -5px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)' 
+            boxShadow: displayPrompt
+              ? '0 10px 30px -5px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)'
               : '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
           }}
         >
@@ -452,7 +463,7 @@ export const StepFinal = () => {
               </div>
             ) : displayPrompt ? (
               // Show content when streaming or complete
-              <div 
+              <div
                 ref={promptContainerRef}
                 className="overflow-y-auto max-h-[140px]"
               >
@@ -508,27 +519,27 @@ export const StepFinal = () => {
               <motion.div
                 className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
                 animate={{ top: ["-100%", "200%"] }}
-                transition={{ 
-                  duration: 1.5, 
-                  repeat: Infinity, 
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
                   ease: "linear",
-                  repeatDelay: 0.5 
+                  repeatDelay: 0.5
                 }}
               />
             </div>
 
             {/* Connection Nodes */}
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.1 }}
-              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10" 
+              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.7 }}
-              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10" 
+              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10"
             />
           </div>
         </motion.div>
@@ -549,31 +560,31 @@ export const StepFinal = () => {
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
               <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
                 <div className="flex items-center gap-2">
-                    {isGeneratingPosts ? (
-                        <Sparkles className="w-4 h-4 text-slate-500" />
-                    ) : (
-                        <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
-                            <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
-                        </div>
-                    )}
-                    <span>Contenido Generado</span>
+                  {isGeneratingPosts ? (
+                    <Sparkles className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
+                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                    </div>
+                  )}
+                  <span>Contenido Generado</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    {!isGeneratingPosts && generatedPosts.length > 0 && (
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95" 
-                            onClick={generatePosts}
-                        >
-                            <RefreshCw className="w-3 h-3" />
-                        </Button>
-                    )}
-                    {videoResult && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
-                            <Share2 className="w-3 h-3 text-slate-400" />
-                        </Button>
-                    )}
+                  {!isGeneratingPosts && generatedPosts.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
+                      onClick={generatePosts}
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </Button>
+                  )}
+                  {videoResult && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
+                      <Share2 className="w-3 h-3 text-slate-400" />
+                    </Button>
+                  )}
                 </div>
               </CardTitle>
             </CardHeader>
@@ -604,177 +615,237 @@ export const StepFinal = () => {
                   </div>
                 </div>
               ) : generatedPosts.length > 0 ? (
-                 <div className="relative w-full bg-slate-50/50 group">
-                    <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={currentSlide}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3 }}
-                                className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
-                            >
-                                <div className="relative aspect-square w-full max-w-[400px] rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-white">
-                                    {generatedPosts[currentSlide].imageUrl ? (
-                                        <>
-                                            <div className="absolute top-0 left-0 right-0 h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100">
-                                                {brandLogoUrl && (
-                                                    <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
-                                                        style={{
-                                                            background: brandColors.length > 0 
-                                                                ? `linear-gradient(135deg, ${brandColors[0] || '#40C9FF'}, ${brandColors[1] || brandColors[0] || '#E81CFF'})`
-                                                                : 'linear-gradient(135deg, #40C9FF, #E81CFF)',
-                                                            padding: '2px'
-                                                        }}
-                                                    >
-                                                        <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                                                            {brandLogoUrl.trim().startsWith("<svg") ? (
-                                                                <div
-                                                                    className="w-[70%] h-[70%] text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
-                                                                    dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
-                                                                />
-                                                            ) : (
-                                                                <img
-                                                                    src={brandLogoUrl}
-                                                                    alt="Logo"
-                                                                    className="w-[70%] h-[70%] object-contain"
-                                                                    referrerPolicy="no-referrer"
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <span className="text-sm font-semibold text-slate-900 truncate">
-                                                    {brandName || "Marca"}
-                                                </span>
-                                            </div>
-                                            <div className="absolute top-12 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
-                                                <div className="text-sm font-semibold text-slate-900 mb-1">
-                                                    {brandName || "Marca"}
-                                                </div>
-                                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
-                                                    {(() => {
-                                                        let caption = generatedPosts[currentSlide].caption;
-                                                        
-                                                        if (!caption) {
-                                                            return generatedPosts[currentSlide].description || '';
-                                                        }
-                                                        
-                                                        if (typeof caption !== 'string') {
-                                                            caption = String(caption);
-                                                        }
-                                                        
-                                                        if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
-                                                            try {
-                                                                const parsed = JSON.parse(caption);
-                                                                caption = parsed.caption || parsed.description || caption;
-                                                            } catch {
-                                                                caption = caption;
-                                                            }
-                                                        }
-                                                        
-                                                        if (typeof caption !== 'string') {
-                                                            caption = String(caption);
-                                                        }
-                                                        
-                                                        return caption.length > 150 
-                                                            ? caption.substring(0, 150) + '...' 
-                                                            : caption;
-                                                    })()}
-                                                </p>
-                                            </div>
-                                            <div className="absolute top-12 bottom-[100px] left-0 right-0 z-0">
-                                                <img 
-                                                    src={generatedPosts[currentSlide].imageUrl} 
-                                                    alt={`Generated post ${currentSlide + 1}`}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="absolute bottom-0 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
-                                                <div className="text-sm font-semibold text-slate-900 mb-1">
-                                                    {brandName || "Marca"}
-                                                </div>
-                                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
-                                                    {(() => {
-                                                        let caption = generatedPosts[currentSlide].caption;
-                                                        
-                                                        if (!caption) {
-                                                            return generatedPosts[currentSlide].description || '';
-                                                        }
-                                                        
-                                                        if (typeof caption !== 'string') {
-                                                            caption = String(caption);
-                                                        }
-                                                        
-                                                        if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
-                                                            try {
-                                                                const parsed = JSON.parse(caption);
-                                                                caption = parsed.caption || parsed.description || caption;
-                                                            } catch {
-                                                                caption = caption;
-                                                            }
-                                                        }
-                                                        
-                                                        if (typeof caption !== 'string') {
-                                                            caption = String(caption);
-                                                        }
-                                                        
-                                                        return caption.length > 150 
-                                                            ? caption.substring(0, 150) + '...' 
-                                                            : caption;
-                                                    })()}
-                                                </p>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
-                                            <ImageIcon className="w-12 h-12 opacity-20" />
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </AnimatePresence>
-                        
-                        {/* Navigation Controls */}
-                        {generatedPosts.length > 1 && (
+                <div className="relative w-full bg-slate-50/50 group">
+                  <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentSlide}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
+                      >
+                        <div className="relative aspect-square w-full max-w-[400px] rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-white">
+                          {generatedPosts[currentSlide].imageUrl ? (
                             <>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={prevSlide}
-                                >
-                                    <ChevronLeft className="w-5 h-5 text-slate-700" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={nextSlide}
-                                >
-                                    <ChevronRight className="w-5 h-5 text-slate-700" />
-                                </Button>
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                                    {generatedPosts.map((_, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setCurrentSlide(idx)}
-                                            className={`w-2 h-2 rounded-full transition-colors ${
-                                                idx === currentSlide ? "bg-slate-800" : "bg-slate-300"
-                                            }`}
+                              <div className="absolute top-0 left-0 right-0 h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100">
+                                {brandLogoUrl && (
+                                  <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                                    style={{
+                                      background: brandColors.length > 0
+                                        ? `linear-gradient(135deg, ${brandColors[0] || '#40C9FF'}, ${brandColors[1] || brandColors[0] || '#E81CFF'})`
+                                        : 'linear-gradient(135deg, #40C9FF, #E81CFF)',
+                                      padding: '2px'
+                                    }}
+                                  >
+                                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                                      {brandLogoUrl.trim().startsWith("<svg") ? (
+                                        <div
+                                          className="w-[70%] h-[70%] text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
+                                          dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
                                         />
-                                    ))}
+                                      ) : (
+                                        <img
+                                          src={brandLogoUrl}
+                                          alt="Logo"
+                                          className="w-[70%] h-[70%] object-contain"
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                <span className="text-sm font-semibold text-slate-900 truncate">
+                                  {brandName || "Marca"}
+                                </span>
+                              </div>
+                              <div className="absolute top-12 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
+                                <div className="text-sm font-semibold text-slate-900 mb-1">
+                                  {brandName || "Marca"}
                                 </div>
+                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
+                                  {(() => {
+                                    let caption = generatedPosts[currentSlide].caption;
+
+                                    if (!caption) {
+                                      return generatedPosts[currentSlide].description || '';
+                                    }
+
+                                    if (typeof caption !== 'string') {
+                                      caption = String(caption);
+                                    }
+
+                                    if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+                                      try {
+                                        const parsed = JSON.parse(caption);
+                                        caption = parsed.caption || parsed.description || caption;
+                                      } catch {
+                                        caption = caption;
+                                      }
+                                    }
+
+                                    if (typeof caption !== 'string') {
+                                      caption = String(caption);
+                                    }
+
+                                    return caption.length > 150
+                                      ? caption.substring(0, 150) + '...'
+                                      : caption;
+                                  })()}
+                                </p>
+                              </div>
+                              <div className="absolute top-12 bottom-[100px] left-0 right-0 z-0">
+                                <img
+                                  src={generatedPosts[currentSlide].imageUrl}
+                                  alt={`Generated post ${currentSlide + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
+                                <div className="text-sm font-semibold text-slate-900 mb-1">
+                                  {brandName || "Marca"}
+                                </div>
+                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
+                                  {(() => {
+                                    let caption = generatedPosts[currentSlide].caption;
+
+                                    if (!caption) {
+                                      return generatedPosts[currentSlide].description || '';
+                                    }
+
+                                    if (typeof caption !== 'string') {
+                                      caption = String(caption);
+                                    }
+
+                                    if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+                                      try {
+                                        const parsed = JSON.parse(caption);
+                                        caption = parsed.caption || parsed.description || caption;
+                                      } catch {
+                                        caption = caption;
+                                      }
+                                    }
+
+                                    if (typeof caption !== 'string') {
+                                      caption = String(caption);
+                                    }
+
+                                    return caption.length > 150
+                                      ? caption.substring(0, 150) + '...'
+                                      : caption;
+                                  })()}
+                                </p>
+                              </div>
                             </>
-                        )}
-                    </div>
-                 </div>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+                              <ImageIcon className="w-12 h-12 opacity-20" />
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    {/* Navigation Controls */}
+                    {generatedPosts.length > 1 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={prevSlide}
+                        >
+                          <ChevronLeft className="w-5 h-5 text-slate-700" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={nextSlide}
+                        >
+                          <ChevronRight className="w-5 h-5 text-slate-700" />
+                        </Button>
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                          {generatedPosts.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setCurrentSlide(idx)}
+                              className={`w-2 h-2 rounded-full transition-colors ${idx === currentSlide ? "bg-slate-800" : "bg-slate-300"
+                                }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div className="p-8 text-center text-slate-400 text-sm">
-                   {postGenerationError || "No se pudo generar el contenido."}
+                  {postGenerationError || "No se pudo generar el contenido."}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Generated Video Card */}
+      {(isGeneratingVideo || (displayPrompt && videoResult)) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
+            style={{
+              boxShadow: '0 10px 30px -5px rgba(139, 92, 246, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1)'
+            }}
+          >
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+              <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
+                <div className="flex items-center gap-2">
+                  {isGeneratingVideo ? (
+                    <div className="w-4 h-4 flex items-center justify-center">
+                      <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
+                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                    </div>
+                  )}
+                  <span>{isGeneratingVideo ? "Generando Reel..." : "Video de Campaña"}</span>
+                </div>
+                {videoResult && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
+                    <Share2 className="w-3 h-3 text-slate-400" />
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="relative w-full bg-slate-900 flex items-center justify-center min-h-[400px]">
+                {isGeneratingVideo ? (
+                  <div className="flex flex-col items-center gap-4 p-8 text-center">
+                    <div className="relative w-16 h-16">
+                      <div className="absolute inset-0 rounded-full border-4 border-purple-500/30"></div>
+                      <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
+                      <Video className="absolute inset-0 m-auto w-6 h-6 text-purple-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-white font-medium">Creando tu video</p>
+                      <p className="text-slate-400 text-sm">Esto puede tomar unos minutos...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <video
+                    src={videoResult!}
+                    controls
+                    className="w-full h-full max-h-[600px] object-contain"
+                    poster={generatedPosts[0]?.imageUrl}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -801,27 +872,27 @@ export const StepFinal = () => {
               <motion.div
                 className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
                 animate={{ top: ["-100%", "200%"] }}
-                transition={{ 
-                  duration: 1.5, 
-                  repeat: Infinity, 
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
                   ease: "linear",
-                  repeatDelay: 0.5 
+                  repeatDelay: 0.5
                 }}
               />
             </div>
 
             {/* Connection Nodes */}
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.3 }}
-              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10" 
+              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.9 }}
-              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10" 
+              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10"
             />
           </div>
         </motion.div>
