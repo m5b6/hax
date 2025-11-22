@@ -234,6 +234,79 @@ export const StepFinal = () => {
   const finalVideoPrompt = videoPrompt || wizardStore.getAgentResponse("videoPrompt") || "";
   const displayPrompt = isGenerating ? streamedPrompt : finalVideoPrompt;
 
+  // Video generation state
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [videoResult, setVideoResult] = useState<string | null>(null);
+  const hasGeneratedVideoRef = useRef(false);
+
+  // Trigger video generation when prompt is ready
+  useEffect(() => {
+    if (!displayPrompt || isGenerating || hasGeneratedVideoRef.current) return;
+    
+    // Check if we already have a result in store
+    const existingVideo = wizardStore.getAgentResponse("videoResult");
+    if (existingVideo) {
+      setVideoResult(existingVideo);
+      return;
+    }
+
+    hasGeneratedVideoRef.current = true;
+    setIsGeneratingVideo(true);
+
+    const generateVideo = async () => {
+      try {
+        // Try to find an image from analysis
+        const analysis = wizardStore.getAgentResponse("urlAnalyses");
+        let imageUrl = "";
+        
+        // Safe navigation to find first valid image
+        if (analysis && Array.isArray(analysis)) {
+            for (const result of analysis) {
+                if (result?.images && result.images.length > 0) {
+                    imageUrl = result.images[0];
+                    break;
+                }
+            }
+        } else if (analysis?.images && analysis.images.length > 0) {
+             imageUrl = analysis.images[0];
+        }
+
+        // If no image found in analysis, use a fallback or let API handle default
+        if (!imageUrl) {
+             // Try to get from urls input directly if it's an image url? 
+             // Unlikely for "urls" input which is usually a website.
+             // We'll let the API use its hardcoded fallback or fail.
+             console.log("No source image found, using API fallback");
+        }
+
+        const response = await fetch("/api/agent/generate-video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            promptText: displayPrompt,
+            imageUrl: imageUrl 
+          }),
+        });
+
+        if (!response.ok) throw new Error("Failed to generate video");
+        
+        const data = await response.json();
+        
+        if (data.output && Array.isArray(data.output) && data.output.length > 0) {
+            const videoUrl = data.output[0];
+            setVideoResult(videoUrl);
+            wizardStore.setAgentResponse("videoResult", videoUrl);
+        }
+      } catch (error) {
+        console.error("Error generating video:", error);
+      } finally {
+        setIsGeneratingVideo(false);
+      }
+    };
+
+    generateVideo();
+  }, [displayPrompt, isGenerating, wizardStore]);
+
   return (
     <div className="space-y-0">
       {/* Video Prompt Card - Always show, even before streaming starts */}
@@ -398,26 +471,55 @@ export const StepFinal = () => {
             }}
           >
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
-              <CardTitle className="text-sm flex items-center gap-2 text-slate-900 font-medium">
-                <ImageIcon className="w-4 h-4 text-slate-500" />
-                <span>Imágenes y Videos</span>
+              <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
+                <div className="flex items-center gap-2">
+                    {isGeneratingVideo ? (
+                        <Video className="w-4 h-4 text-slate-500" />
+                    ) : (
+                        <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
+                            <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                        </div>
+                    )}
+                    <span>Video Generado</span>
+                </div>
+                {videoResult && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
+                        <Share2 className="w-3 h-3 text-slate-400" />
+                    </Button>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-center py-8">
-                <RotatingLoader
-                  items={[
-                    { text: "Redactando copy", icon: Sparkles },
-                    { text: "Optimizando mensajes", icon: Target },
-                    { text: "Ajustando tono", icon: Palette },
-                  ]}
-                  spinnerSize="sm"
-                  textSize="sm"
-                  interval={2000}
-                  showSpinner={false}
-                  className="text-slate-500"
-                />
-              </div>
+            <CardContent className="p-0">
+              {isGeneratingVideo ? (
+                <div className="flex items-center justify-center py-12">
+                  <RotatingLoader
+                    items={[
+                      { text: "Renderizando video", icon: Video },
+                      { text: "Aplicando efectos", icon: Sparkles },
+                      { text: "Finalizando", icon: Film },
+                    ]}
+                    spinnerSize="sm"
+                    textSize="sm"
+                    interval={2000}
+                    showSpinner={false}
+                    className="text-slate-500"
+                  />
+                </div>
+              ) : videoResult ? (
+                 <div className="relative w-full aspect-[9/16] bg-black">
+                    <video 
+                        src={videoResult} 
+                        controls 
+                        autoPlay 
+                        loop 
+                        className="w-full h-full object-cover"
+                    />
+                 </div>
+              ) : (
+                <div className="p-8 text-center text-slate-400 text-sm">
+                    No se pudo generar el video.
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
