@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Sparkles, Copy, Share2 } from "lucide-react";
 import { motion } from "framer-motion";
+import CircularGallery from "./CircularGallery";
 
 interface StepFinalProps {
   data: any;
@@ -69,6 +70,27 @@ export const StepFinal = ({ data }: StepFinalProps) => {
       </div>
 
       <div className="grid gap-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+        >
+          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
+            style={{
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
+            }}
+          >
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8 relative z-10">
+              <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
+                <span className="text-2xl">🎨</span> Creatividades Generadas
+              </CardTitle>
+            </CardHeader>
+            <div className="w-full h-[600px] bg-white relative">
+               <CircularGallery bend={3} textColor="#1e293b" borderRadius={0.05} scrollEase={0.02} />
+            </div>
+          </Card>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}

@@ -140,17 +140,38 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
             setToolStatus(new Map(urlToolStatus));
           }
         },
-        onMessageAnnotationsPart: (annotations) => {
-          console.log("[Stream] Annotations:", annotations);
-          const parsed = annotations[0] as any;
-          if (parsed && parsed.insights && Array.isArray(parsed.insights)) {
-            console.log("[Stream] Updating insights:", parsed.insights);
-            setUrlAnalyses((prev) => {
-              return new Map(prev).set(url, {
-                url,
-                insights: parsed.insights,
+        onFinishMessagePart: () => {
+          console.log("[Stream] Stream finished. Full content:", fullJson);
+          try {
+            // Robust cleanup of markdown code blocks
+            let cleanJson = fullJson.trim();
+            // Remove opening ```json or ```
+            cleanJson = cleanJson.replace(/^```(?:json)?\s*/, "");
+            // Remove closing ```
+            cleanJson = cleanJson.replace(/\s*```$/, "");
+            
+            console.log("[Stream] Cleaned JSON:", cleanJson);
+            
+            if (!cleanJson) {
+              console.warn("[Stream] Empty JSON received");
+              return;
+            }
+            
+            const parsed = JSON.parse(cleanJson);
+            if (parsed && parsed.insights && Array.isArray(parsed.insights)) {
+              console.log("[Stream] Updating insights:", parsed.insights);
+              setUrlAnalyses((prev) => {
+                return new Map(prev).set(url, {
+                  url,
+                  insights: parsed.insights,
+                });
               });
-            });
+            } else {
+              console.warn("[Stream] JSON parsed but missing insights array:", parsed);
+            }
+          } catch (e) {
+            console.error("[Stream] Error parsing final JSON:", e);
+            console.log("Failed JSON content:", fullJson);
           }
         },
       });

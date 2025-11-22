@@ -452,7 +452,7 @@ class App {
       dpr: Math.min(window.devicePixelRatio || 1, 2)
     });
     this.gl = this.renderer.gl;
-    this.gl.clearColor(0, 0, 0, 0);
+    this.gl.clearColor(1, 1, 1, 1);
     this.container.appendChild(this.renderer.gl.canvas as HTMLCanvasElement);
   }
 

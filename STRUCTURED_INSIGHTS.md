@@ -147,3 +147,4 @@ return NextResponse.json({
 4. 📊 **Consistent Format**: Same structure for all URLs analyzed
 5. 🎯 **Marketing-Ready**: Insights organized for ad campaign creation
 
+

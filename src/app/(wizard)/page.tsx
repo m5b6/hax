@@ -1,14 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { WizardLayout } from "@/components/wizard/WizardLayout";
 import { StepIdentity } from "@/components/wizard/StepIdentity";
 import { StepBrand } from "@/components/wizard/StepBrand";
 import { StepStrategy } from "@/components/wizard/StepStrategy";
 import { StepFinal } from "@/components/wizard/StepFinal";
 
-export default function WizardPage() {
-  const [step, setStep] = useState(0);
+function WizardContent() {
+  const searchParams = useSearchParams();
+  const initialStep = parseInt(searchParams.get("step") || "0");
+  const [step, setStep] = useState(initialStep);
+  
+  // Update step if URL param changes
+  useEffect(() => {
+    const stepParam = searchParams.get("step");
+    if (stepParam) {
+      setStep(parseInt(stepParam));
+    }
+  }, [searchParams]);
+
   const [data, setData] = useState<any>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [businessName, setBusinessName] = useState("");
@@ -16,13 +28,6 @@ export default function WizardPage() {
   const handleNext = (newData: any) => {
     setData((prev: any) => ({ ...prev, ...newData }));
     setStep((prev) => prev + 1);
-  };
-
-  const getStepTitle = (stepIndex: number) => {
-    if (stepIndex === 0) {
-      return businessName ? `Cuéntanos sobre ${businessName}` : "Cuéntanos sobre tu negocio";
-    }
-    return steps[stepIndex].title;
   };
 
   const steps = [
@@ -48,7 +53,14 @@ export default function WizardPage() {
     },
   ];
 
-  const currentStepData = steps[step];
+  const getStepTitle = (stepIndex: number) => {
+    if (stepIndex === 0) {
+      return businessName ? `Cuéntanos sobre ${businessName}` : "Cuéntanos sobre tu negocio";
+    }
+    return steps[stepIndex]?.title || "";
+  };
+
+  const currentStepData = steps[step] || steps[0];
 
   return (
     <WizardLayout
@@ -60,5 +72,13 @@ export default function WizardPage() {
     >
       {currentStepData.component}
     </WizardLayout>
+  );
+}
+
+export default function WizardPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <WizardContent />
+    </Suspense>
   );
 }
