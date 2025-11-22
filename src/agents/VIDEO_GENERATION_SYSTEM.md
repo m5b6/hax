@@ -75,40 +75,65 @@ Este sistema implementa un flujo completo de generación de contenido para video
 **Archivo:** [`workflow/video-generation/route.ts`](file:///Users/ianfryastorga/hax/src/app/api/workflow/video-generation/route.ts)  
 **Endpoint:** `POST /api/workflow/video-generation`
 
-Este endpoint coordina el flujo completo y maneja dos escenarios:
+Este endpoint coordina el flujo completo y maneja múltiples escenarios:
 
-#### Escenario 1: Generar Todo (Sin Imagen)
+#### Escenario 1: Generar 3 Variaciones de Prompts (Sin Selección)
 ```typescript
 // Request
 {
   contentMatrix: { ... },
-  designBrief: { ... },
-  targetPhase: "GANCHO" // opcional
+  designBrief: { ... }
 }
 
 // Response Stream:
-// 1. { step: "image-prompt", status: "generating" }
-// 2. { step: "image-prompt", status: "complete", data: "..." }
-// 3. { step: "image-generation", status: "waiting", message: "..." }
-// Se detiene aquí - el usuario debe generar la imagen
+// 1. { step: "image-prompts", status: "generating" }
+// 2. { step: "image-prompt-variation", status: "generating", variation: 1 }
+// 3. { step: "image-prompt-variation", status: "complete", variation: 1, data: "..." }
+// 4. { step: "image-prompt-variation", status: "generating", variation: 2 }
+// 5. { step: "image-prompt-variation", status: "complete", variation: 2, data: "..." }
+// 6. { step: "image-prompt-variation", status: "generating", variation: 3 }
+// 7. { step: "image-prompt-variation", status: "complete", variation: 3, data: "..." }
+// 8. { step: "image-prompts", status: "complete", data: [variations] }
+// 9. { step: "user-selection", status: "waiting", message: "Elige una variación..." }
+// Se detiene aquí - el usuario debe elegir
 ```
 
-#### Escenario 2: Continuar con Imagen (Con imageUrl)
+**Las 3 Variaciones:**
+1. **Cinematográfico y Profesional** - Estilo cine, formal, premium
+2. **Energético y Vibrante** - Colores vivos, dinámico, impactante
+3. **Minimalista y Limpio** - Simple, moderno, enfocado
+
+#### Escenario 2: Confirmar Selección (Con selectedVariation, Sin imageUrl)
 ```typescript
 // Request
 {
   contentMatrix: { ... },
   designBrief: { ... },
+  selectedVariation: 2 // Usuario eligió la variación 2
+}
+
+// Response Stream:
+// ... genera las 3 variaciones ...
+// { step: "variation-selected", status: "confirmed", variation: 2 }
+// Se detiene - usuario debe generar la imagen con DALL-E, Midjourney, etc.
+```
+
+#### Escenario 3: Generar Video Prompt (Con imageUrl)
+```typescript
+// Request
+{
+  contentMatrix: { ... },
+  designBrief: { ... },
+  selectedVariation: 2, // opcional, solo para tracking
   imageUrl: "https://..." // URL de la imagen generada
 }
 
 // Response Stream:
-// 1. { step: "image-prompt", status: "generating" }
-// 2. { step: "image-prompt", status: "complete", data: "..." }
-// 3. { step: "image-url", status: "received", data: "https://..." }
-// 4. { step: "video-prompt", status: "generating" }
-// 5. { step: "video-prompt", status: "complete", data: "..." }
-// 6. { step: "workflow", status: "complete" }
+// ... genera las 3 variaciones ...
+// { step: "image-url", status: "received", data: "https://..." }
+// { step: "video-prompt", status: "generating" }
+// { step: "video-prompt", status: "complete", data: "..." }
+// { step: "workflow", status: "complete" }
 ```
 
 ---
