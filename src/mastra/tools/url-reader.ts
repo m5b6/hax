@@ -102,20 +102,36 @@ export const urlReaderTool = createTool({
         colors.unshift(themeColor);
       }
 
-      const logoCandidates = [
+      const inlineSvgLogo = $('svg[aria-label*="logo" i], svg[id*="logo" i], svg[class*="logo" i]').first();
+      const svgTitleLogo = $('svg title:contains("logo")').first().parent('svg');
+      let svgLogoElement = inlineSvgLogo.length ? inlineSvgLogo : svgTitleLogo;
+      if (!svgLogoElement || !svgLogoElement.length) {
+        svgLogoElement = $('svg').filter((_, el) => {
+          const attr = (
+            ($(el).attr('aria-label') || '') +
+            ($(el).attr('id') || '') +
+            ($(el).attr('class') || '')
+          ).toLowerCase();
+          return attr.includes('logo');
+        }).first();
+      }
+      const inlineSvgMarkup = svgLogoElement.length ? $.html(svgLogoElement) : null;
+
+      const logoImageCandidates = [
         $('meta[property="og:logo"]').attr('content'),
         $('meta[property="og:image"]').attr('content'),
         $('meta[itemprop="logo"]').attr('content'),
+        $('link[rel="icon"][sizes*="192"]').attr('href'),
+        $('link[rel="icon"][sizes*="180"]').attr('href'),
         $('link[rel="icon"]').attr('href'),
         $('link[rel="shortcut icon"]').attr('href'),
         $('img[alt*="logo" i]').attr('src'),
         $('img[src*="logo"]').attr('src'),
-        $('svg[role="img"]').parent('a[href]').first().attr('href'),
       ]
         .filter(Boolean)
         .map(src => resolveUrl(src as string));
 
-      const logoUrl = logoCandidates.find(Boolean) || null;
+      const logoUrl = logoImageCandidates.find(Boolean) || inlineSvgMarkup || null;
 
       const primaryColor = colors[0] || themeColor || null;
       const secondaryColor = colors.find((color) => color !== primaryColor) || null;

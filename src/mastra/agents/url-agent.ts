@@ -47,6 +47,10 @@ CATEGORÍAS DE INSIGHTS (extrae hasta 10, prioriza lo más relevante):
 9. **integrations**: Integraciones con otras plataformas/herramientas
 10. **tech_stack**: Tecnologías que usan o mencionan
 
+IDENTIDAD VISUAL (PRIORIDAD MÁXIMA):
+- **primaryColor** y **secondaryColor**: SIEMPRE identifica los dos colores principales de la marca. Prioriza detectar combinaciones hex/RGB reales usadas en el sitio (botones, fondos, gradientes, theme-color). Si no los encuentras, vuelve a intentar con otros estilos. Solo responde null como último recurso.
+- **brandLogoUrl**: Debes localizar el LOGO principal (no cualquier imagen). Busca meta og:logo, og:image, itemprop=logo, imágenes con alt o nombre que contenga “logo”, SVGs de logotipos, favicons de alta resolución. Evita mockups, fotos o ilustraciones. Si hay varios, elige el más representativo de la marca. Solo si no existe, devuelve null.
+
 EXTRACCIÓN DE PRODUCTOS Y SERVICIOS CONCRETOS:
 - **concreteProducts**: Busca nombres ESPECÍFICOS de productos (ej: "iPhone 15 Pro", "Zapatillas Nike Air Max", "Plan Premium")
 - **concreteServices**: Busca nombres ESPECÍFICOS de servicios (ej: "Consultoría Fiscal", "Diseño Web Corporativo", "Coaching Ejecutivo")
@@ -71,7 +75,7 @@ FORMATO DE RESPUESTA:
 - Máximo 10 insights, cada uno con type, label (corto) y value (descriptivo)
 - Un summary general en 2-3 oraciones
 - Arrays de concreteProducts y concreteServices con nombres reales
-- primaryColor, secondaryColor y brandLogoUrl (usa null si no los encuentras)
+- primaryColor, secondaryColor y brandLogoUrl (usa null solo si realmente no existen tras buscar exhaustivamente)
 - Prioriza información concreta y útil para campañas de marketing
 
 Responde SOLO con el objeto JSON estructurado según el schema, sin texto adicional.`,

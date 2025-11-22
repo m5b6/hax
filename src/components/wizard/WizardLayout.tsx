@@ -1,5 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useBrand } from "@/contexts/BrandContext";
 
 interface WizardLayoutProps {
   children: React.ReactNode;
@@ -19,6 +20,8 @@ export const WizardLayout = ({
   isAnalyzing = false,
 }: WizardLayoutProps) => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
+  const { brandLogoUrl } = useBrand();
+  const isInlineSvgLogo = brandLogoUrl?.trim().startsWith("<svg");
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
@@ -65,6 +68,26 @@ export const WizardLayout = ({
             </div>
             
             <div className="glass-panel rounded-[2.5rem] p-6 sm:p-10 relative">
+              {brandLogoUrl && (
+                <div className="absolute -top-8 left-8 w-16 h-16 rounded-full bg-white shadow-xl shadow-slate-200/60 border border-white/70 flex items-center justify-center overflow-hidden z-30">
+                  {isInlineSvgLogo ? (
+                    <div
+                      className="w-10 h-10 text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
+                      dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
+                    />
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={brandLogoUrl}
+                        alt="Logo"
+                        className="w-12 h-12 object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
               {title && (
                 <header className="mb-8 text-center space-y-2">
                   <motion.h1 

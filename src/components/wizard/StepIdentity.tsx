@@ -64,7 +64,7 @@ const insightColors: Record<InsightType, string> = {
 };
 
 export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepIdentityProps) => {
-  const { setBrandColors } = useBrand();
+  const { setBrandColors, setBrandLogoUrl: setGlobalBrandLogo } = useBrand();
   const [name, setName] = useState("");
   const [identity, setIdentity] = useState("");
   const [urls, setUrls] = useState<string[]>([""]);
@@ -157,6 +157,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
 
       if (data.brandLogoUrl) {
         setBrandLogoUrl(data.brandLogoUrl);
+        setGlobalBrandLogo(data.brandLogoUrl);
       }
 
       if (data.concreteProducts && Array.isArray(data.concreteProducts)) {
