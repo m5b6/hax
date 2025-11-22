@@ -1,6 +1,5 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ColorBends from "@/components/ColorBends";
 
 interface WizardLayoutProps {
   children: React.ReactNode;
@@ -9,7 +8,6 @@ interface WizardLayoutProps {
   title?: string;
   subtitle?: string;
   isAnalyzing?: boolean;
-  brandColors?: string[];
 }
 
 export const WizardLayout = ({
@@ -19,7 +17,6 @@ export const WizardLayout = ({
   title,
   subtitle,
   isAnalyzing = false,
-  brandColors = [],
 }: WizardLayoutProps) => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
@@ -98,19 +95,6 @@ export const WizardLayout = ({
         </AnimatePresence>
       </main>
 
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <ColorBends 
-          chromatic={brandColors.length === 0}
-          colors={brandColors.length > 0 ? brandColors : ['#40C9FF', '#E81CFF', '#FF9F0A']}
-          speed={0.3}
-          autoRotate={10}
-          scale={1.2}
-          frequency={1.5}
-          warpStrength={1.5}
-          transparent={true}
-          noise={0.05}
-        />
-      </div>
 
       <style jsx>{`
         @keyframes rainbow-shift {

@@ -6,12 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSe
 import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InsightsChip } from "./InsightsChip";
+import { useBrand } from "@/contexts/BrandContext";
 
 interface StepIdentityProps {
   onNext: (data: any) => void;
   onAnalyzingChange?: (isAnalyzing: boolean) => void;
   onNameChange?: (name: string) => void;
-  onColorsDiscovered?: (colors: string[]) => void;
 }
 
 interface ProductServiceOption {
@@ -32,6 +32,9 @@ interface Insight {
 interface URLAnalysis {
   url: string;
   insights: Insight[];
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
 }
 
 const insightIcons: Record<InsightType, React.ComponentType<any>> = {
@@ -60,7 +63,8 @@ const insightColors: Record<InsightType, string> = {
   tech_stack: "from-slate-500 to-gray-600",
 };
 
-export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange, onColorsDiscovered }: StepIdentityProps) => {
+export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepIdentityProps) => {
+  const { setBrandColors } = useBrand();
   const [name, setName] = useState("");
   const [identity, setIdentity] = useState("");
   const [urls, setUrls] = useState<string[]>([""]);
@@ -68,11 +72,11 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange, onColors
   const [productName, setProductName] = useState("");
   const [urlAnalyses, setUrlAnalyses] = useState<Map<string, URLAnalysis>>(new Map());
   const [analyzingUrls, setAnalyzingUrls] = useState<Set<string>>(new Set());
-  const [discoveredColors, setDiscoveredColors] = useState<string[]>([]);
   const [discoveredProducts, setDiscoveredProducts] = useState<ProductServiceOption[]>([]);
   const [discoveredServices, setDiscoveredServices] = useState<ProductServiceOption[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     onNameChange?.(name);
@@ -81,12 +85,6 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange, onColors
   useEffect(() => {
     onAnalyzingChange?.(analyzingUrls.size > 0);
   }, [analyzingUrls.size, onAnalyzingChange]);
-
-  useEffect(() => {
-    if (discoveredColors.length > 0) {
-      onColorsDiscovered?.(discoveredColors);
-    }
-  }, [discoveredColors, onColorsDiscovered]);
 
   const addUrl = () => setUrls([...urls, ""]);
   const removeUrl = (index: number) => {
@@ -141,14 +139,24 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange, onColors
         setUrlAnalyses((prev) => new Map(prev).set(formattedUrl, {
           url: formattedUrl,
           insights: data.insights,
+          logoUrl: data.brandLogoUrl ?? null,
+          primaryColor: data.primaryColor ?? null,
+          secondaryColor: data.secondaryColor ?? null,
         }));
       }
 
-      if (data.colors && Array.isArray(data.colors) && data.colors.length > 0) {
-        setDiscoveredColors((prev) => {
-          const newColors = [...prev, ...data.colors].filter((c, i, arr) => arr.indexOf(c) === i);
-          return newColors.slice(0, 2);
-        });
+      const colorCandidates = [
+        data.primaryColor,
+        data.secondaryColor,
+        ...(Array.isArray(data.colors) ? data.colors : []),
+      ].filter((color): color is string => Boolean(color));
+
+      if (colorCandidates.length > 0) {
+        setBrandColors(colorCandidates.slice(0, 2));
+      }
+
+      if (data.brandLogoUrl) {
+        setBrandLogoUrl(data.brandLogoUrl);
       }
 
       if (data.concreteProducts && Array.isArray(data.concreteProducts)) {
@@ -221,7 +229,8 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange, onColors
         urls: urls.filter((u) => u), 
         type, 
         productName, 
-        urlAnalyses: Array.from(urlAnalyses.values())
+        urlAnalyses: Array.from(urlAnalyses.values()),
+        brandLogoUrl,
       });
     }
   };

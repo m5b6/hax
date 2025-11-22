@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Check, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,10 +45,17 @@ const MOCK_AI_QUESTIONS = [
 export const StepStrategy = ({ onNext, previousData }: StepStrategyProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [isAnalyzing, setIsAnalyzing] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsAnalyzing(false);
+    }, 2800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const currentQuestion = MOCK_AI_QUESTIONS[currentQuestionIndex];
   const totalQuestions = MOCK_AI_QUESTIONS.length;
-  // Progress is calculated based on completed steps (index) out of total
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
 
   const handleSelect = (optionId: string) => {
@@ -69,9 +76,51 @@ export const StepStrategy = ({ onNext, previousData }: StepStrategyProps) => {
     }
   };
 
+  if (isAnalyzing) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 space-y-10">
+        <div className="relative w-28 h-28 flex items-center justify-center">
+          <motion.div
+            className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-400/20 via-purple-500/20 to-fuchsia-500/20"
+            animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0, 0.2] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute inset-0 rounded-full bg-gradient-to-tr from-cyan-400/20 via-blue-500/20 to-purple-600/20"
+            animate={{ scale: [1.2, 1.8, 1.2], opacity: [0.15, 0, 0.15] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+          />
+          <div className="relative w-20 h-20">
+            <motion.div
+              className="absolute inset-0 rounded-full border-[3px] border-transparent"
+              style={{ 
+                borderTopColor: 'rgb(59, 130, 246)',
+                borderRightColor: 'rgb(147, 51, 234)',
+              }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+            />
+            <div className="absolute inset-[10px] rounded-full bg-gradient-to-tr from-blue-400 via-purple-500 to-fuchsia-500 shadow-lg shadow-purple-500/30" />
+          </div>
+        </div>
+        <div className="text-center space-y-4">
+          <motion.p 
+            className="text-xl font-semibold bg-gradient-to-r from-blue-500 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent tracking-tight"
+            animate={{ opacity: [0.7, 1, 0.7] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            Analizando tu estrategia
+          </motion.p>
+          <p className="text-slate-400 text-[15px] leading-relaxed max-w-md">
+            Procesando {previousData.name || "tu negocio"} para generar las mejores preguntas estratégicas
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-xl mx-auto">
-        {/* Progress Bar */}
         <div className="mb-10">
             <div className="flex justify-between text-xs font-medium text-slate-500 mb-3 px-1">
                 <span>Progreso de estrategia</span>

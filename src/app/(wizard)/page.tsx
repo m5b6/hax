@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { WizardLayout } from "@/components/wizard/WizardLayout";
 import { StepIdentity } from "@/components/wizard/StepIdentity";
-import { StepBrand } from "@/components/wizard/StepBrand";
 import { StepStrategy } from "@/components/wizard/StepStrategy";
 import { StepFinal } from "@/components/wizard/StepFinal";
 
@@ -24,7 +23,6 @@ function WizardContent() {
   const [data, setData] = useState<any>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [businessName, setBusinessName] = useState("");
-  const [brandColors, setBrandColors] = useState<string[]>([]);
 
   const handleNext = (newData: any) => {
     setData((prev: any) => ({ ...prev, ...newData }));
@@ -35,12 +33,7 @@ function WizardContent() {
     {
       title: "Cuéntanos sobre tu negocio",
       subtitle: "Empecemos por lo básico para entender qué ofreces.",
-      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} onNameChange={setBusinessName} onColorsDiscovered={setBrandColors} />,
-    },
-    {
-      title: "Identidad de Marca",
-      subtitle: "Analizando tu estilo para sugerir la mejor estética.",
-      component: <StepBrand onNext={handleNext} previousData={data} />,
+      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} onNameChange={setBusinessName} />,
     },
     {
       title: "Estrategia de Campaña",
@@ -70,7 +63,6 @@ function WizardContent() {
       title={getStepTitle(step)}
       subtitle={currentStepData.subtitle}
       isAnalyzing={isAnalyzing}
-      brandColors={brandColors}
     >
       {currentStepData.component}
     </WizardLayout>

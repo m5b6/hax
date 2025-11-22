@@ -22,7 +22,7 @@ const extractedDataSchema = z.object({
 
 export const urlReaderTool = createTool({
   id: "url-reader",
-  description: "Reads and extracts structured content from a URL including title, description, stylesheets, images, scripts, and categorized insights",
+  description: "Reads and extracts structured content from a URL including title, description, visual identity clues, and categorized insights",
   inputSchema: z.object({
     url: z.string().describe("The URL to read (e.g., https://example.com)"),
   }),
@@ -36,6 +36,9 @@ export const urlReaderTool = createTool({
     scripts: z.array(z.string()).describe("URLs of all external scripts found"),
     fonts: z.array(z.string()).describe("Font URLs found in stylesheets"),
     colors: z.array(z.string()).describe("Color codes extracted from the page"),
+    primaryColor: z.string().nullable().describe("Best guess for brand primary color"),
+    secondaryColor: z.string().nullable().describe("Best guess for brand secondary color"),
+    logoUrl: z.string().nullable().describe("URL to the main brand logo/image"),
     extractedData: z.array(extractedDataSchema).max(10),
     error: z.string().optional(),
   }),
@@ -98,6 +101,24 @@ export const urlReaderTool = createTool({
       if (themeColor && !colors.includes(themeColor)) {
         colors.unshift(themeColor);
       }
+
+      const logoCandidates = [
+        $('meta[property="og:logo"]').attr('content'),
+        $('meta[property="og:image"]').attr('content'),
+        $('meta[itemprop="logo"]').attr('content'),
+        $('link[rel="icon"]').attr('href'),
+        $('link[rel="shortcut icon"]').attr('href'),
+        $('img[alt*="logo" i]').attr('src'),
+        $('img[src*="logo"]').attr('src'),
+        $('svg[role="img"]').parent('a[href]').first().attr('href'),
+      ]
+        .filter(Boolean)
+        .map(src => resolveUrl(src as string));
+
+      const logoUrl = logoCandidates.find(Boolean) || null;
+
+      const primaryColor = colors[0] || themeColor || null;
+      const secondaryColor = colors.find((color) => color !== primaryColor) || null;
 
       $('script, style, nav, footer, header').remove();
 
@@ -199,6 +220,9 @@ export const urlReaderTool = createTool({
         scripts,
         fonts,
         colors,
+        primaryColor,
+        secondaryColor,
+        logoUrl,
         extractedData: extractedData.slice(0, 10),
       };
     } catch (error) {
@@ -212,6 +236,9 @@ export const urlReaderTool = createTool({
         scripts: [],
         fonts: [],
         colors: [],
+        primaryColor: null,
+        secondaryColor: null,
+        logoUrl: null,
         extractedData: [],
         error: error instanceof Error ? error.message : "Error desconocido",
       };

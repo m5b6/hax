@@ -23,6 +23,9 @@ const analysisSchema = z.object({
   summary: z.string(),
   concreteProducts: z.array(z.string()).max(10),
   concreteServices: z.array(z.string()).max(10),
+  primaryColor: z.string().nullable(),
+  secondaryColor: z.string().nullable(),
+  brandLogoUrl: z.string().nullable(),
 });
 
 export async function POST(req: NextRequest) {
@@ -61,21 +64,43 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
 
     const toolResults = result.toolResults || [];
     let colors: string[] = [];
+    let primaryColor: string | null = parsedOutput.primaryColor ?? null;
+    let secondaryColor: string | null = parsedOutput.secondaryColor ?? null;
+    let brandLogoUrl: string | null = parsedOutput.brandLogoUrl ?? null;
     
     for (const toolResult of toolResults) {
-      if (toolResult.result && typeof toolResult.result === 'object' && 'colors' in toolResult.result) {
+      if (toolResult.result && typeof toolResult.result === 'object') {
+        const resultObj = toolResult.result as any;
         const extractedColors = (toolResult.result as any).colors;
         if (Array.isArray(extractedColors) && extractedColors.length > 0) {
           colors = extractedColors;
-          break;
+        }
+        if (!primaryColor && typeof resultObj.primaryColor === 'string') {
+          primaryColor = resultObj.primaryColor;
+        }
+        if (!secondaryColor && typeof resultObj.secondaryColor === 'string') {
+          secondaryColor = resultObj.secondaryColor;
+        }
+        if (!brandLogoUrl && typeof resultObj.logoUrl === 'string') {
+          brandLogoUrl = resultObj.logoUrl;
         }
       }
+    }
+
+    if (!primaryColor && colors.length > 0) {
+      primaryColor = colors[0];
+    }
+    if (!secondaryColor && colors.length > 1) {
+      secondaryColor = colors[1];
     }
 
     return new Response(
       JSON.stringify({
         ...parsedOutput,
         colors: colors.slice(0, 2),
+        primaryColor,
+        secondaryColor,
+        brandLogoUrl,
         concreteProducts: parsedOutput.concreteProducts || [],
         concreteServices: parsedOutput.concreteServices || [],
       }),
