@@ -8,16 +8,13 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { wizardData, contentMatrix, designBrief, imageDescription } = body;
 
-        // Si viene wizardData completo, construir el prompt desde ahí
-        // Si viene contentMatrix directamente, usar el formato anterior (backward compatibility)
         let prompt = "";
 
+        // Si viene wizardData completo, construir el prompt desde ahí
         if (wizardData) {
             const data = wizardData as WizardData;
             
             // Construir MATRIZ DE CONTENIDO desde los datos del wizard
-            // Por ahora, creamos una matriz básica basada en la información disponible
-            // TODO: Esto puede mejorarse para generar una matriz más completa
             const contentMatrixFromWizard = {
                 phases: [
                     {

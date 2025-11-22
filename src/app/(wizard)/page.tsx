@@ -49,8 +49,8 @@ function WizardContent() {
       component: <StepStrategy onNext={handleNext} />,
     },
     {
-      title: "Tu Campaña Lista",
-      subtitle: "Todo lo que necesitas para lanzar en Meta Ads.",
+      title: "Creando tu campaña",
+      subtitle: "Estamos preparando todo lo que necesitas para tu campaña.",
       component: <StepFinal />,
     },
   ];

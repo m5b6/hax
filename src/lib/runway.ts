@@ -10,7 +10,7 @@ interface RunwayImageGenerationParams {
     aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
     resolution?: "720p" | "1080p" | "4k";
     seed?: number;
-    referenceImages?: string[]; // URLs of reference images
+    referenceImages?: string[]; // URLs of re?ference images
 }
 
 interface RunwayTask {

@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video } from "lucide-react";
+import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CircularGallery from "./CircularGallery";
 import { useWizardStore } from "@/contexts/WizardStore";
 import { StepTransitionLoader } from "./StepTransitionLoader";
+import { RotatingLoader } from "@/components/ui/rotating-loader";
 import type { RotatingLoaderItem } from "@/components/ui/rotating-loader";
 
 // Helper to get icon component by name from lucide-react
@@ -106,6 +107,7 @@ export const StepFinal = () => {
   const [streamedPrompt, setStreamedPrompt] = useState("");
   const [videoPrompt, setVideoPrompt] = useState<string | null>(null);
   const hasGeneratedRef = useRef(false);
+  const promptContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Only generate once when component mounts
@@ -170,6 +172,12 @@ export const StepFinal = () => {
                 if (typeof textContent === "string") {
                   fullPrompt += textContent;
                   setStreamedPrompt(fullPrompt);
+                  // Auto-scroll to bottom
+                  setTimeout(() => {
+                    if (promptContainerRef.current) {
+                      promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+                    }
+                  }, 0);
                 }
               } catch (e) {
                 // If parsing fails, try to extract text directly
@@ -179,6 +187,12 @@ export const StepFinal = () => {
                 if (cleaned) {
                   fullPrompt += cleaned;
                   setStreamedPrompt(fullPrompt);
+                  // Auto-scroll to bottom
+                  setTimeout(() => {
+                    if (promptContainerRef.current) {
+                      promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+                    }
+                  }, 0);
                 }
               }
             } else if (line.trim() && !line.startsWith("data:") && !line.startsWith("{")) {
@@ -186,6 +200,12 @@ export const StepFinal = () => {
               // This handles cases where toTextStreamResponse returns plain text
               fullPrompt += line + "\n";
               setStreamedPrompt(fullPrompt);
+              // Auto-scroll to bottom
+              setTimeout(() => {
+                if (promptContainerRef.current) {
+                  promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+                }
+              }, 0);
             }
           }
         }
@@ -203,226 +223,205 @@ export const StepFinal = () => {
     generateVideoPrompt();
   }, [wizardStore]);
 
-  if (isGenerating) {
-    return (
-      <div className="w-full">
-        <StepTransitionLoader
-          items={loadingItems}
-          title="Generando campaña..."
-          gradientColors={gradientColors}
-        />
-        {/* Show streamed prompt content */}
-        {streamedPrompt && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-6 glass-panel rounded-xl p-4 max-h-[240px] overflow-y-auto"
-            style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.7)'
-            }}
-          >
-            <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed">
-              {streamedPrompt}
-            </pre>
-          </motion.div>
-        )}
-      </div>
-    );
-  }
+  // Auto-scroll to bottom when streamedPrompt updates
+  useEffect(() => {
+    if (streamedPrompt && promptContainerRef.current) {
+      promptContainerRef.current.scrollTop = promptContainerRef.current.scrollHeight;
+    }
+  }, [streamedPrompt]);
 
   // Get video prompt from store or state
   const finalVideoPrompt = videoPrompt || wizardStore.getAgentResponse("videoPrompt") || "";
+  const displayPrompt = isGenerating ? streamedPrompt : finalVideoPrompt;
 
   return (
-    <div className="space-y-12">
-      <div className="text-center mb-12">
-        <motion.div 
-          initial={{ scale: 0, rotate: -20 }} 
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="inline-flex items-center justify-center w-24 h-24 bg-[#30D158]/10 text-[#30D158] rounded-full mb-8 ring-1 ring-[#30D158]/20 backdrop-blur-xl"
+    <div className="space-y-0">
+      {/* Video Prompt Card - Always show, even before streaming starts */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <Card className="border-none overflow-hidden rounded-xl bg-white relative transition-shadow duration-700"
           style={{
-            boxShadow: '0 4px 12px rgba(48,209,88,0.15), inset 0 1px 0 rgba(255,255,255,0.3)'
+            boxShadow: displayPrompt 
+              ? '0 10px 30px -5px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)' 
+              : '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
           }}
         >
-          <CheckCircle2 className="w-12 h-12 stroke-[1.5]" />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h2 className="text-4xl font-bold text-slate-900 tracking-tight mb-4">¡Tu campaña está lista!</h2>
-          <p className="text-slate-500 text-xl font-light">
-            Todo listo para lanzar en Meta Ads.
-          </p>
-        </motion.div>
-      </div>
-
-      {/* Video Prompt Card */}
-      {finalVideoPrompt && (
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
-            style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
-            }}
-          >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-5 px-6">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2.5 text-slate-900 font-medium">
-                  <Video className="w-4 h-4 text-slate-500" />
-                  <span>Guía Visual</span>
-                </CardTitle>
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2 text-slate-900 font-medium">
+                {isGenerating ? (
+                  <>
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span>Guía Visual</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
+                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                    </div>
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span>Guía Visual</span>
+                    <span className="text-xs text-slate-400 font-normal ml-1">
+                      ({(new TextEncoder().encode(displayPrompt).length / 1024).toFixed(1)} KB)
+                    </span>
+                  </>
+                )}
+              </CardTitle>
+              {!isGenerating && displayPrompt && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => {
                     navigator.clipboard.writeText(finalVideoPrompt);
                   }}
-                  className="h-7 w-7 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
+                  className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-3 h-3" />
                 </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-4">
+            {isGenerating && !displayPrompt ? (
+              // Show loading state when starting, before any content streams
+              <div className="flex items-center justify-center py-8">
+                <RotatingLoader
+                  items={[
+                    { text: "Generando guión", icon: Video },
+                    { text: "Analizando contenido", icon: Sparkles },
+                    { text: "Creando prompt", icon: Palette },
+                  ]}
+                  spinnerSize="sm"
+                  textSize="sm"
+                  interval={2000}
+                  showSpinner={false}
+                  className="text-slate-500"
+                />
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50/50 p-5 rounded-xl border border-slate-100 max-h-[320px] overflow-y-auto"
-                style={{
-                  fontSize: '0.75rem',
-                  lineHeight: '1.6',
-                }}
+            ) : displayPrompt ? (
+              // Show content when streaming or complete
+              <div 
+                ref={promptContainerRef}
+                className="overflow-y-auto max-h-[140px]"
               >
-                {finalVideoPrompt}
-              </pre>
+                {isGenerating && (
+                  // Show loading indicator inside card content during streaming
+                  <div className="mb-3 flex items-center justify-center">
+                    <RotatingLoader
+                      items={[
+                        { text: "Generando guía visual", icon: Video },
+                        { text: "Analizando contenido", icon: Sparkles },
+                        { text: "Creando prompt", icon: Palette },
+                      ]}
+                      spinnerSize="sm"
+                      textSize="sm"
+                      interval={2000}
+                      showSpinner={false}
+                      className="text-slate-500"
+                    />
+                  </div>
+                )}
+                <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50/50 p-4 rounded-lg border border-slate-100"
+                  style={{
+                    fontSize: '0.7rem',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {displayPrompt}
+                </pre>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Connecting Flow - Active Data Link */}
+      {!isGenerating && displayPrompt && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-center -my-1 relative z-0"
+        >
+          <div className="relative flex flex-col items-center h-16">
+            {/* The Beam */}
+            <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
+              <motion.div
+                className="absolute top-0 left-0 w-full bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500"
+                initial={{ height: "0%" }}
+                animate={{ height: "100%" }}
+                transition={{ duration: 0.8, ease: "circOut" }}
+              />
+              {/* Light Pulse */}
+              <motion.div
+                className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
+                animate={{ top: ["-100%", "200%"] }}
+                transition={{ 
+                  duration: 1.5, 
+                  repeat: Infinity, 
+                  ease: "linear",
+                  repeatDelay: 0.5 
+                }}
+              />
+            </div>
+
+            {/* Connection Nodes */}
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1 }}
+              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10" 
+            />
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.7 }}
+              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10" 
+            />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Generating Posts Block - Show when first card is complete */}
+      {!isGenerating && displayPrompt && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
+            style={{
+              boxShadow: '0 -10px 30px -5px rgba(236, 72, 153, 0.15), 0 0 0 1px rgba(236, 72, 153, 0.1)'
+            }}
+          >
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+              <CardTitle className="text-sm flex items-center gap-2 text-slate-900 font-medium">
+                <ImageIcon className="w-4 h-4 text-slate-500" />
+                <span>Imágenes y Videos</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center py-8">
+                <RotatingLoader
+                  items={[
+                    { text: "Redactando copy", icon: Sparkles },
+                    { text: "Optimizando mensajes", icon: Target },
+                    { text: "Ajustando tono", icon: Palette },
+                  ]}
+                  spinnerSize="sm"
+                  textSize="sm"
+                  interval={2000}
+                  showSpinner={false}
+                  className="text-slate-500"
+                />
+              </div>
             </CardContent>
           </Card>
         </motion.div>
       )}
-
-      <div className="grid gap-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
-            style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
-            }}
-          >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8 relative z-10">
-              <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
-                <span className="text-2xl">🎨</span> Creatividades Generadas
-              </CardTitle>
-            </CardHeader>
-            <div className="w-full h-[600px] bg-white relative">
-               <CircularGallery bend={3} textColor="#1e293b" borderRadius={0.05} scrollEase={0.02} />
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-        >
-          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
-            style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
-            }}
-          >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8">
-              <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
-                <span className="text-2xl">✍️</span> Copy Sugerido
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium text-xs text-[#007AFF] uppercase tracking-[0.2em]">Opción 1: Directa</p>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="text-slate-600 leading-relaxed bg-slate-50/50 p-8 rounded-[1.5rem] border border-slate-100 font-light text-[17px]"
-                  style={{
-                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
-                  }}
-                >
-                  <p>¿Buscas <span className="text-slate-900 font-semibold">{data.productName}</span>? 🚀</p>
-                  <br />
-                  <p>Descubre la solución perfecta para <span className="text-slate-900">{data.strategy?.audience || "ti"}</span>. 
-                  Calidad garantizada y resultados inmediatos.</p>
-                  <br />
-                  <p className="text-[#007AFF] font-medium">👉 Compra aquí: {data.urls?.[0]}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-        >
-          <Card className="border-none overflow-hidden rounded-[2rem] bg-white relative"
-            style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
-            }}
-          >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8">
-              <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
-                <span className="text-2xl">🎯</span> Segmentación
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[
-                { label: "Ubicación", value: data.strategy?.location },
-                { label: "Intereses", value: data.type === "producto" ? "Compras online, Lujo" : "Negocios, Emprendimiento" },
-                { label: "Edad", value: "25 - 45 años" },
-                { label: "Objetivo", value: data.strategy?.goal },
-              ].map((item, i) => (
-                <div 
-                  key={i} 
-                  className="bg-slate-50/50 p-6 rounded-[1.5rem] border border-slate-100 hover:bg-white transition-all group"
-                  style={{
-                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
-                  }}
-                >
-                  <p className="text-[11px] text-slate-400 uppercase tracking-widest mb-3 font-medium group-hover:text-slate-500 transition-colors">{item.label}</p>
-                  <p className="font-medium text-lg text-slate-900 tracking-wide">{item.value}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      <div className="pt-12 pb-8 flex justify-center gap-4">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => window.location.reload()}
-          className="glass-button-secondary h-14 rounded-full px-8 text-[15px]"
-        >
-          Comenzar de nuevo
-        </Button>
-        <Button
-          size="lg"
-          className="glass-button-primary h-14 rounded-full px-8 text-[15px] font-semibold"
-        >
-          <Share2 className="w-4 h-4 mr-2" /> Exportar PDF
-        </Button>
-      </div>
     </div>
   );
 };
