@@ -1,7 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-import { WizardData } from "@/types/wizard";
 
 const mcqOptionSchema = z.object({
   id: z.string().describe("ID único de la opción (ej: 'moderno', 'natural', 'directo', 'rapido', 'medio', 'lento', 'alta', 'media', 'cero')"),

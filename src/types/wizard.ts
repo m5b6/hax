@@ -61,6 +61,22 @@ export interface AgentResponse {
   }>;
   strategyAnswers?: Record<string, string>;
   
+  // MCQ questions (from MCQ agent - Step 2)
+  mcqQuestions?: Array<{
+    id: string;
+    question: string;
+    options: Array<{
+      id: string;
+      text: string;
+      description: string;
+      sensation: string;
+      usefulFor: string;
+      howItLooks: string;
+      whyItWorks: string;
+    }>;
+  }>;
+  mcqAnswers?: Record<string, string>;
+  
   // Campaign generation responses (from final step agent)
   campaignCopy?: {
     titles?: string[];
