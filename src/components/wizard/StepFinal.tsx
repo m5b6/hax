@@ -20,18 +20,18 @@ const getIconByName = (iconName: string): LucideIcon => {
   if (!iconName || typeof iconName !== 'string') {
     return Sparkles;
   }
-  
+
   const exactMatch = LucideIcons[iconName as keyof typeof LucideIcons];
   if (exactMatch && typeof exactMatch === 'function') {
     return exactMatch as LucideIcon;
   }
-  
+
   const normalizedName = iconName.charAt(0).toUpperCase() + iconName.slice(1);
   const caseMatch = LucideIcons[normalizedName as keyof typeof LucideIcons];
   if (caseMatch && typeof caseMatch === 'function') {
     return caseMatch as LucideIcon;
   }
-  
+
   return Sparkles;
 };
 
@@ -49,15 +49,15 @@ export const StepFinal = () => {
     strategy: wizardStore.getAgentResponse("strategyAnswers"),
     urlAnalyses: wizardStore.getAgentResponse("urlAnalyses"),
   };
-  
+
   // Get MCQ data for contextual loading
   const mcqAnswers = wizardStore.getAgentResponse("mcqAnswers") || {};
   const mcqQuestions = wizardStore.getAgentResponse("mcqQuestions") || [];
-  
+
   // Extract selected options with their colors and icons
   const selectedOptions = useMemo(() => {
     const options: Array<{ text: string; color: string; icon: LucideIcon }> = [];
-    
+
     mcqQuestions.forEach((question: any) => {
       const selectedId = mcqAnswers[question.id];
       if (selectedId && question.options) {
@@ -71,10 +71,10 @@ export const StepFinal = () => {
         }
       }
     });
-    
+
     return options;
   }, [mcqAnswers, mcqQuestions]);
-  
+
   // Create loading items based on selected options
   const loadingItems = useMemo((): RotatingLoaderItem[] => {
     const defaultItems: RotatingLoaderItem[] = [
@@ -82,7 +82,7 @@ export const StepFinal = () => {
       { text: "Seleccionando públicos", icon: Target },
       { text: "Optimizando creatividades", icon: Palette },
     ];
-    
+
     // If we have selected options, use their colors/icons for contextual messages
     if (selectedOptions.length > 0) {
       return [
@@ -92,10 +92,10 @@ export const StepFinal = () => {
         { text: "Generando copy final", icon: Sparkles },
       ];
     }
-    
+
     return defaultItems;
   }, [selectedOptions]);
-  
+
   // Get colors for gradient (use selected option colors or defaults)
   const gradientColors = useMemo(() => {
     if (selectedOptions.length >= 2) {
@@ -107,7 +107,7 @@ export const StepFinal = () => {
     }
     return ["#3B82F6", "#8B5CF6", "#FF0080"];
   }, [selectedOptions]);
-  
+
   const [isGenerating, setIsGenerating] = useState(true);
   const [streamedPrompt, setStreamedPrompt] = useState("");
   const [videoPrompt, setVideoPrompt] = useState<string | null>(null);
@@ -316,6 +316,19 @@ export const StepFinal = () => {
 
     generateVideo();
   }, [displayPrompt, isGenerating, wizardStore]);
+
+  // Show error state if generation failed
+  if (generationError) {
+    return (
+      <div className="text-center space-y-6">
+        <div className="text-red-500 text-xl">❌ Error al generar las imágenes</div>
+        <p className="text-slate-600">{generationError}</p>
+        <Button onClick={() => window.location.reload()}>
+          Intentar de nuevo
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-0">

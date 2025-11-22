@@ -15,6 +15,7 @@
   "devDependencies": {
     "@ai-sdk/react": "^2.0.98",
     "@types/node": "^24.10.1",
+    "@types/probe-image-size": "^7.2.5",
     "@types/react": "^19.2.6",
     "@types/react-dom": "^19.2.3",
     "ai": "^5.0.98",
@@ -44,6 +45,7 @@
     "@use-gesture/react": "^10.3.1",
     "cheerio": "^1.0.0",
     "ogl": "^1.0.11",
+    "probe-image-size": "^7.2.3",
     "three": "^0.181.2"
   }
 }
