@@ -10,17 +10,25 @@ import { StepFinal } from "@/components/wizard/StepFinal";
 export default function WizardPage() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<any>({});
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleNext = (newData: any) => {
     setData((prev: any) => ({ ...prev, ...newData }));
     setStep((prev) => prev + 1);
   };
 
+  const getStepTitle = (stepIndex: number) => {
+    if (stepIndex === 0) {
+      return data.name ? `Cuéntanos sobre ${data.name}` : "Cuéntanos sobre tu negocio";
+    }
+    return steps[stepIndex].title;
+  };
+
   const steps = [
     {
       title: "Cuéntanos sobre tu negocio",
       subtitle: "Empecemos por lo básico para entender qué ofreces.",
-      component: <StepIdentity onNext={handleNext} />,
+      component: <StepIdentity onNext={handleNext} onAnalyzingChange={setIsAnalyzing} />,
     },
     {
       title: "Identidad de Marca",
@@ -45,8 +53,9 @@ export default function WizardPage() {
     <WizardLayout
       currentStep={step}
       totalSteps={steps.length}
-      title={currentStepData.title}
+      title={getStepTitle(step)}
       subtitle={currentStepData.subtitle}
+      isAnalyzing={isAnalyzing}
     >
       {currentStepData.component}
     </WizardLayout>

@@ -1,5 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ColorBends from "@/components/ColorBends";
 
 interface WizardLayoutProps {
   children: React.ReactNode;
@@ -7,6 +8,7 @@ interface WizardLayoutProps {
   totalSteps: number;
   title?: string;
   subtitle?: string;
+  isAnalyzing?: boolean;
 }
 
 export const WizardLayout = ({
@@ -15,6 +17,7 @@ export const WizardLayout = ({
   totalSteps,
   title,
   subtitle,
+  isAnalyzing = false,
 }: WizardLayoutProps) => {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
@@ -66,11 +69,12 @@ export const WizardLayout = ({
               {title && (
                 <header className="mb-10 text-center space-y-3">
                   <motion.h1 
+                    key={title}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="text-3xl sm:text-4xl font-serif tracking-tight text-slate-900"
-                    style={{ fontFamily: 'var(--font-instrument-serif)' }}
+                    className="text-3xl sm:text-4xl tracking-tight text-slate-900"
+                    style={{ fontFamily: 'var(--font-instrument-serif), serif' }}
                   >
                     {title}
                   </motion.h1>
@@ -93,11 +97,25 @@ export const WizardLayout = ({
         </AnimatePresence>
       </main>
 
-      {/* Very subtle ambient background */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-30%] right-[-15%] w-[60%] h-[60%] rounded-full bg-purple-100/30 blur-[140px]" />
-        <div className="absolute bottom-[-30%] left-[-15%] w-[60%] h-[60%] rounded-full bg-blue-100/30 blur-[140px]" />
-      </div>
+      {isAnalyzing ? (
+        <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+          <ColorBends 
+            chromatic={true}
+            speed={0.3}
+            autoRotate={10}
+            scale={1.2}
+            frequency={1.5}
+            warpStrength={1.5}
+            transparent={true}
+            noise={0.05}
+          />
+        </div>
+      ) : (
+        <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-30%] right-[-15%] w-[60%] h-[60%] rounded-full bg-purple-100/30 blur-[140px]" />
+          <div className="absolute bottom-[-30%] left-[-15%] w-[60%] h-[60%] rounded-full bg-blue-100/30 blur-[140px]" />
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes rainbow-shift {

@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, ArrowRight, Brain, Sparkles, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ShinyText from "./ShinyText";
 
 interface StepIdentityProps {
   onNext: (data: any) => void;
+  onAnalyzingChange?: (isAnalyzing: boolean) => void;
 }
 
 type InsightType = "style" | "info" | "products" | "services" | "target_audience" | "tone" | "pricing" | "features" | "integrations" | "tech_stack";
@@ -49,7 +51,7 @@ const insightColors: Record<InsightType, string> = {
   tech_stack: "from-slate-500 to-gray-600",
 };
 
-export const StepIdentity = ({ onNext }: StepIdentityProps) => {
+export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) => {
   const [name, setName] = useState("");
   const [identity, setIdentity] = useState("");
   const [urls, setUrls] = useState<string[]>([""]);
@@ -77,7 +79,11 @@ export const StepIdentity = ({ onNext }: StepIdentityProps) => {
   const analyzeUrl = async (url: string) => {
     if (!url || url.trim() === "") return;
     
-    setAnalyzingUrls((prev) => new Set(prev).add(url));
+    setAnalyzingUrls((prev) => {
+      const newSet = new Set(prev).add(url);
+      onAnalyzingChange?.(newSet.size > 0);
+      return newSet;
+    });
     setUrlAnalyses((prev) => new Map(prev).set(url, { url, insights: [] }));
 
     try {
@@ -129,6 +135,7 @@ export const StepIdentity = ({ onNext }: StepIdentityProps) => {
       setAnalyzingUrls((prev) => {
         const newSet = new Set(prev);
         newSet.delete(url);
+        onAnalyzingChange?.(newSet.size > 0);
         return newSet;
       });
     }
@@ -192,21 +199,15 @@ export const StepIdentity = ({ onNext }: StepIdentityProps) => {
           <div className="flex items-center gap-2">
             <Label className="text-[15px] font-medium text-slate-500 ml-1">Sus URLs</Label>
             {analyzingUrls.size > 0 && (
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 1, 0.5]
-                }}
-                transition={{ 
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className="flex items-center gap-1.5 text-blue-500"
-              >
-                <Brain className="w-4 h-4" />
-                <span className="text-xs font-medium">Analizando...</span>
-              </motion.div>
+              <div className="flex items-center gap-1.5">
+                <Brain className="w-4 h-4 text-blue-500" />
+                <ShinyText 
+                  text="Analizando..." 
+                  disabled={false} 
+                  speed={3} 
+                  className="text-xs font-medium"
+                />
+              </div>
             )}
           </div>
           <div className="space-y-3">

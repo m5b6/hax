@@ -18,6 +18,7 @@ type ColorBendsProps = {
   mouseInfluence?: number;
   parallax?: number;
   noise?: number;
+  chromatic?: boolean;
 };
 
 const MAX_COLORS = 8 as const;
@@ -122,7 +123,8 @@ export default function ColorBends({
   warpStrength = 1,
   mouseInfluence = 1,
   parallax = 0.5,
-  noise = 0.1
+  noise = 0.1,
+  chromatic = false
 }: ColorBendsProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -302,6 +304,6 @@ export default function ColorBends({
     };
   }, []);
 
-  return <div ref={containerRef} className={`color-bends-container ${className || ''}`} style={style} />;
+  return <div ref={containerRef} className={`color-bends ${chromatic ? 'chromatic' : ''} ${className || ''}`} style={style} />;
 }
 
