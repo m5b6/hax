@@ -419,7 +419,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange, onNameChange }: StepId
             {type === "servicio" && (
               <motion.div 
                 layoutId="activeTab"
-                className="absolute inset-0 glass-input rounded-xl shadow-sm"
+                className="absolute inset-0 glass-input rounded-xl shadow-md"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
