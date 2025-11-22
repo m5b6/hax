@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  .font-serif {
+    font-family: var(--font-instrument-serif), serif;
+  }
+}
+
+@layer base {
   :root {
     --background: 0 0% 98%;
     --foreground: 240 10% 3.9%;
@@ -45,7 +51,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-[#F5F5F7] text-slate-900 antialiased;
+    @apply text-slate-900 antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }

@@ -1,5 +1,27 @@
 import { mastra } from "@/mastra";
 import { NextRequest } from "next/server";
+import { z } from "zod";
+
+const analysisSchema = z.object({
+  insights: z.array(z.object({
+    type: z.enum([
+      "style",
+      "info",
+      "products",
+      "services",
+      "target_audience",
+      "tone",
+      "pricing",
+      "features",
+      "integrations",
+      "tech_stack"
+    ]),
+    label: z.string(),
+    value: z.string(),
+    confidence: z.enum(["high", "medium", "low"]),
+  })).max(10),
+  summary: z.string(),
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validUrls = urls.filter((url) => url && url.trim() !== "");
+    const validUrls = urls.filter((url: string) => url && url.trim() !== "");
 
     if (validUrls.length === 0) {
       return new Response(
@@ -23,23 +45,18 @@ export async function POST(req: NextRequest) {
 
     const agent = mastra.getAgent("urlAnalyzerAgent");
 
-    const prompt = `Analiza las siguientes URLs y proporciona un resumen de lo que encuentres:
+    const prompt = `Analiza la siguiente URL y extrae insights estructurados: ${validUrls[0]}
 
-${validUrls.map((url, i) => `${i + 1}. ${url}`).join("\n")}
-
-Para cada URL, identifica:
-- Tipo de negocio o proyecto
-- Productos/servicios principales
-- Tono y estilo de comunicación
-- Público objetivo aparente
-
-Usa el urlReaderTool para leer cada URL.`;
+Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados.`;
 
     const stream = await agent.stream(prompt, {
       format: "aisdk",
+      structuredOutput: {
+        schema: analysisSchema,
+      },
     });
 
-    return stream.toUIMessageStreamResponse();
+    return stream.toTextStreamResponse();
   } catch (error) {
     console.error("Error analyzing URLs:", error);
     return new Response(

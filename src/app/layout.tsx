@@ -17,9 +17,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${inter.variable} font-sans antialiased text-slate-900 min-h-screen overflow-x-hidden selection:bg-blue-100 selection:text-blue-900 relative`}>
+      <body className={`${inter.variable} font-sans antialiased text-slate-900 min-h-screen overflow-x-hidden selection:bg-blue-100 selection:text-blue-900`}>
         <ColorBends 
-          className="fixed inset-0"
           transparent={true}
           colors={['#40C9FF', '#E81CFF', '#FF9F0A']}
           speed={0.2}

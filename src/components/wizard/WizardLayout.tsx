@@ -19,7 +19,7 @@ export const WizardLayout = ({
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden bg-[#F5F5F7]">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-8 relative overflow-hidden">
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-[3px] bg-black/5 z-50">
         <motion.div
@@ -69,7 +69,8 @@ export const WizardLayout = ({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900"
+                    className="text-3xl sm:text-4xl font-serif tracking-tight text-slate-900"
+                    style={{ fontFamily: 'var(--font-instrument-serif)' }}
                   >
                     {title}
                   </motion.h1>
