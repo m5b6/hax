@@ -10,8 +10,8 @@ const mcqOptionSchema = z.object({
   usefulFor: z.string().describe("Para qué tipo de negocios es útil"),
   howItLooks: z.string().describe("Cómo se ve visualmente"),
   whyItWorks: z.string().describe("Por qué funciona para este negocio específico"),
-  color: z.string().describe("Color hexadecimal VIBRANTE y distintivo para la tarjeta. Sé CREATIVO y BOLD con los colores. Usa colores poppy, saturados y memorables. No te limites a colores básicos - experimenta con tonos únicos que reflejen la personalidad de la opción. Ejemplos inspiradores: '#FF6B9D' (rosa vibrante), '#00D9FF' (cian eléctrico), '#FFB800' (amarillo dorado), '#C44569' (magenta profundo), '#00F5A0' (verde neón), '#8B5CF6' (púrpura intenso). El color debe ser distintivo y hacer que la opción se destaque visualmente."),
-  icon: z.string().describe("Nombre del icono de lucide-react. Sé CREATIVO y elige iconos que realmente representen la esencia de la opción. No te limites a los obvios - piensa en iconos que transmitan la sensación y personalidad única de cada opción."),
+  color: z.string().describe("Color hexadecimal MUY BRILLANTE, VIBRANTE y saturado para la tarjeta. PRIORIZA colores brillantes y llamativos. Usa colores con alta saturación y luminosidad. Evita colores oscuros o apagados. Ejemplos de colores BRILLANTES: '#FF0080' (rosa neón), '#00FFFF' (cian brillante), '#FFD700' (amarillo dorado), '#FF1493' (rosa intenso), '#00FF88' (verde neón), '#9D4EDD' (púrpura vibrante), '#FF4500' (naranja eléctrico), '#00BFFF' (azul cielo brillante). El color debe ser BRILLANTE y hacer que la opción se destaque inmediatamente."),
+  icon: z.string().describe("Nombre EXACTO del icono de lucide-react (case-sensitive, sin espacios, formato PascalCase). Ejemplos válidos: 'Sparkles', 'Zap', 'Heart', 'Palette', 'Film', 'Users', 'Target', 'Globe', 'Rocket', 'Flame', 'Leaf', 'Sun', 'Moon', 'Cloud', 'Wind', 'Waves', 'TrendingUp', 'Eye', 'Focus', 'Box', 'Grid', 'Layout', 'Layers', 'Bolt', 'Play', 'Circle', 'Square', 'UserPlus', 'Smile', 'HandHeart', 'Flower'. IMPORTANTE: Usa el nombre EXACTO del icono tal como aparece en lucide-react. No uses guiones ni espacios. Si no estás seguro, usa uno de los ejemplos listados."),
 });
 
 const mcqSchema = z.object({
@@ -122,6 +122,6 @@ FORMATO DE RESPUESTA:
 - Los IDs deben ser: 'moderno', 'natural', 'directo' para pregunta 1; 'rapido', 'medio', 'lento' para pregunta 2; 'alta', 'media', 'cero' para pregunta 3
 - Cada opción DEBE incluir un color hexadecimal VIBRANTE y CREATIVO y un icono de lucide-react válido
 - Los títulos (text) deben ser MÁXIMO 15 caracteres - sé punchy y memorable`,
-  model: openai("gpt-4o"),
+  model: openai("gpt-4.1"),
 });
 

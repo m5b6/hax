@@ -12,9 +12,41 @@ interface StepStrategyProps {
 
 // Helper to get icon component by name from lucide-react
 const getIconByName = (iconName: string): React.ComponentType<any> => {
-  // @ts-ignore - dynamic icon access
-  const Icon = LucideIcons[iconName as keyof typeof LucideIcons] as ComponentType<any>;
-  return Icon || Check;
+  if (!iconName || typeof iconName !== 'string') {
+    return Check;
+  }
+  
+  // Try exact match first
+  const exactMatch = LucideIcons[iconName as keyof typeof LucideIcons];
+  if (exactMatch) {
+    return exactMatch as React.ComponentType<any>;
+  }
+  
+  // Try case-insensitive match
+  const normalizedName = iconName.charAt(0).toUpperCase() + iconName.slice(1);
+  const caseMatch = LucideIcons[normalizedName as keyof typeof LucideIcons];
+  if (caseMatch) {
+    return caseMatch as React.ComponentType<any>;
+  }
+  
+  // Try with common variations
+  const variations = [
+    iconName.toLowerCase(),
+    iconName.toUpperCase(),
+    normalizedName,
+    iconName.replace(/-/g, ''),
+    iconName.replace(/_/g, ''),
+  ];
+  
+  for (const variation of variations) {
+    const match = LucideIcons[variation as keyof typeof LucideIcons];
+    if (match) {
+      return match as React.ComponentType<any>;
+    }
+  }
+  
+  console.warn(`Icon "${iconName}" not found in lucide-react, using Check as fallback`);
+  return Check;
 };
 
 // Helper to get icon component based on MCQ option IDs (fallback)
@@ -208,7 +240,7 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
             {currentQuestion.options.map((option) => {
               const isSelected = answers[currentQuestion.id] === option.id;
               const OptionIcon = option.icon ? getIconByName(option.icon) : getIconForOption(option.id);
-              const optionColor = option.color || "#3B82F6";
+              const optionColor = option.color || "#FF0080"; // Default to bright pink instead of blue
               
               // Convert hex to RGB for opacity
               const hexToRgb = (hex: string) => {
@@ -230,10 +262,11 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
               };
               
               const rgb = hexToRgb(optionColor);
-              const bgColorOpaque = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.06)`;
-              const bgColorFull = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
-              const borderColorOpaque = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
-              const borderColorFull = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
+              // Use brighter, more saturated colors
+              const bgColorOpaque = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+              const bgColorFull = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`;
+              const borderColorOpaque = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.25)`;
+              const borderColorFull = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
               
               return (
                 <motion.button
