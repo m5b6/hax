@@ -15,24 +15,24 @@ const getIconByName = (iconName: string): LucideIcon => {
   if (!iconName || typeof iconName !== 'string') {
     return Sparkles;
   }
-  
+
   const exactMatch = LucideIcons[iconName as keyof typeof LucideIcons];
   if (exactMatch && typeof exactMatch === 'function') {
     return exactMatch as LucideIcon;
   }
-  
+
   const normalizedName = iconName.charAt(0).toUpperCase() + iconName.slice(1);
   const caseMatch = LucideIcons[normalizedName as keyof typeof LucideIcons];
   if (caseMatch && typeof caseMatch === 'function') {
     return caseMatch as LucideIcon;
   }
-  
+
   return Sparkles;
 };
 
 export const StepFinal = () => {
   const wizardStore = useWizardStore();
-  
+
   // Get all data from store
   const data = {
     name: wizardStore.getInput("name"),
@@ -43,15 +43,15 @@ export const StepFinal = () => {
     strategy: wizardStore.getAgentResponse("strategyAnswers"),
     urlAnalyses: wizardStore.getAgentResponse("urlAnalyses"),
   };
-  
+
   // Get MCQ data for contextual loading
   const mcqAnswers = wizardStore.getAgentResponse("mcqAnswers") || {};
   const mcqQuestions = wizardStore.getAgentResponse("mcqQuestions") || [];
-  
+
   // Extract selected options with their colors and icons
   const selectedOptions = useMemo(() => {
     const options: Array<{ text: string; color: string; icon: LucideIcon }> = [];
-    
+
     mcqQuestions.forEach((question: any) => {
       const selectedId = mcqAnswers[question.id];
       if (selectedId && question.options) {
@@ -65,10 +65,10 @@ export const StepFinal = () => {
         }
       }
     });
-    
+
     return options;
   }, [mcqAnswers, mcqQuestions]);
-  
+
   // Create loading items based on selected options
   const loadingItems = useMemo((): RotatingLoaderItem[] => {
     const defaultItems: RotatingLoaderItem[] = [
@@ -76,7 +76,7 @@ export const StepFinal = () => {
       { text: "Seleccionando públicos", icon: Target },
       { text: "Optimizando creatividades", icon: Palette },
     ];
-    
+
     // If we have selected options, use their colors/icons for contextual messages
     if (selectedOptions.length > 0) {
       return [
@@ -86,10 +86,10 @@ export const StepFinal = () => {
         { text: "Generando copy final", icon: Sparkles },
       ];
     }
-    
+
     return defaultItems;
   }, [selectedOptions]);
-  
+
   // Get colors for gradient (use selected option colors or defaults)
   const gradientColors = useMemo(() => {
     if (selectedOptions.length >= 2) {
@@ -101,31 +101,94 @@ export const StepFinal = () => {
     }
     return ["#3B82F6", "#8B5CF6", "#FF0080"];
   }, [selectedOptions]);
-  
+
   const [isGenerating, setIsGenerating] = useState(true);
+  const [generatedPosts, setGeneratedPosts] = useState<Array<{
+    id: number;
+    description: string;
+    imageUrl?: string;
+    imageError?: string;
+  }> | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  const hasGenerated = React.useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsGenerating(false);
-    }, 3500);
-    return () => clearTimeout(timer);
-  }, []);
+    const generateImages = async () => {
+      if (hasGenerated.current) return;
+      hasGenerated.current = true;
+
+      try {
+        // Get all wizard data
+        const wizardData = {
+          inputs: wizardStore.getAllInputs(),
+          agentResponses: wizardStore.getAllAgentResponses(),
+          metadata: wizardStore.data.metadata,
+        };
+
+        console.log("🎨 Calling post-generation endpoint...", wizardData);
+
+        const response = await fetch('/api/workflow/post-generation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(wizardData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.posts) {
+          console.log("✅ Posts generated successfully:", result.posts);
+          setGeneratedPosts(result.posts);
+        } else {
+          throw new Error(result.error || "Failed to generate posts");
+        }
+      } catch (error) {
+        console.error("Error generating posts:", error);
+        setGenerationError(error instanceof Error ? error.message : "Unknown error");
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    generateImages();
+  }, [wizardStore]);
 
   if (isGenerating) {
     return (
       <StepTransitionLoader
-        items={loadingItems}
-        title="Creando tu campaña..."
+        items={[
+          { text: "Generando conceptos creativos", icon: Sparkles },
+          { text: "Creando imágenes con IA", icon: Palette },
+          { text: "Optimizando para historias", icon: Film },
+        ]}
+        title="Generando tus historias..."
         gradientColors={gradientColors}
       />
+    );
+  }
+
+  // Show error state if generation failed
+  if (generationError) {
+    return (
+      <div className="text-center space-y-6">
+        <div className="text-red-500 text-xl">❌ Error al generar las imágenes</div>
+        <p className="text-slate-600">{generationError}</p>
+        <Button onClick={() => window.location.reload()}>
+          Intentar de nuevo
+        </Button>
+      </div>
     );
   }
 
   return (
     <div className="space-y-12">
       <div className="text-center mb-12">
-        <motion.div 
-          initial={{ scale: 0, rotate: -20 }} 
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
           className="inline-flex items-center justify-center w-24 h-24 bg-[#30D158]/10 text-[#30D158] rounded-full mb-8 ring-1 ring-[#30D158]/20 backdrop-blur-xl"
@@ -160,11 +223,29 @@ export const StepFinal = () => {
           >
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-6 px-8 relative z-10">
               <CardTitle className="text-xl flex items-center gap-3 text-slate-900 font-medium">
-                <span className="text-2xl">🎨</span> Creatividades Generadas
+                <span className="text-2xl">🎨</span> Imágenes Generadas
               </CardTitle>
             </CardHeader>
-            <div className="w-full h-[600px] bg-white relative">
-               <CircularGallery bend={3} textColor="#1e293b" borderRadius={0.05} scrollEase={0.02} />
+            <div className="w-full h-[600px] bg-white relative overflow-hidden">
+              {generatedPosts && generatedPosts.length > 0 && generatedPosts.some(p => p.imageUrl) ? (
+                <CircularGallery
+                  items={generatedPosts
+                    .filter(post => post.imageUrl)
+                    .map(post => ({
+                      image: post.imageUrl!,
+                      text: `Historia ${post.id}`
+                    }))}
+                  bend={3}
+                  textColor="#1e293b"
+                  borderRadius={0.05}
+                  scrollEase={0.02}
+                  scrollSpeed={2}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-slate-400">
+                  {generationError ? "Error al generar imágenes" : "Cargando imágenes..."}
+                </div>
+              )}
             </div>
           </Card>
         </motion.div>
@@ -188,9 +269,9 @@ export const StepFinal = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <p className="font-medium text-xs text-[#007AFF] uppercase tracking-[0.2em]">Opción 1: Directa</p>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg active:scale-95"
                   >
                     <Copy className="w-4 h-4" />
@@ -203,8 +284,8 @@ export const StepFinal = () => {
                 >
                   <p>¿Buscas <span className="text-slate-900 font-semibold">{data.productName}</span>? 🚀</p>
                   <br />
-                  <p>Descubre la solución perfecta para <span className="text-slate-900">{data.strategy?.audience || "ti"}</span>. 
-                  Calidad garantizada y resultados inmediatos.</p>
+                  <p>Descubre la solución perfecta para <span className="text-slate-900">{data.strategy?.audience || "ti"}</span>.
+                    Calidad garantizada y resultados inmediatos.</p>
                   <br />
                   <p className="text-[#007AFF] font-medium">👉 Compra aquí: {data.urls?.[0]}</p>
                 </div>
@@ -235,8 +316,8 @@ export const StepFinal = () => {
                 { label: "Edad", value: "25 - 45 años" },
                 { label: "Objetivo", value: data.strategy?.goal },
               ].map((item, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className="bg-slate-50/50 p-6 rounded-[1.5rem] border border-slate-100 hover:bg-white transition-all group"
                   style={{
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
