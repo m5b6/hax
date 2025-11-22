@@ -403,6 +403,8 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
     onNext();
   };
 
+  const shouldShowProductSection = urlAnalyses.size > 0 && analyzingUrls.size === 0;
+
   return (
     <div className="space-y-8">
       <div className="space-y-5">
@@ -535,195 +537,206 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/50 shadow-inner">
-          <button
-            onClick={() => setType("producto")}
-            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
-              type === "producto"
-                ? "text-slate-900 glass-input shadow-md"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Package className={`w-4 h-4 ${type === "producto" ? "text-slate-900" : "text-slate-400"}`} />
-            <span>
-              Productos
-              {discoveredProducts.length > 0 && (
-                <span className="font-bold"> ({discoveredProducts.length})</span>
-              )}
-            </span>
-          </button>
-          <button
-            onClick={() => setType("servicio")}
-            className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
-              type === "servicio"
-                ? "text-slate-900 glass-input shadow-md"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Briefcase className={`w-4 h-4 ${type === "servicio" ? "text-slate-900" : "text-slate-400"}`} />
-            <span>
-              Servicios
-              {discoveredServices.length > 0 && (
-                <span className="font-bold"> ({discoveredServices.length})</span>
-              )}
-            </span>
-          </button>
-        </div>
-
-        <div className="space-y-2.5">
-          <Label htmlFor="productName" className="text-sm font-medium text-slate-500 ml-1">
-            Nombre del {type}
-          </Label>
-          {type === 'producto' && discoveredProducts.length > 0 && showProductDropdown ? (
-            <Select value={productName} onValueChange={(value) => {
-              if (value === '__custom__') {
-                setShowProductDropdown(false);
-                setProductName('');
-              } else {
-                setProductName(value);
-              }
-            }}>
-              <SelectTrigger>
-                {productName ? (() => {
-                  const selected = discoveredProducts.find(p => p.value === productName);
-                  if (selected) {
-                    const ProductIcon = selected.icon ? getIconByName(selected.icon) : Package;
-                    const productColor = selected.color || "#3B82F6";
-                    return (
-                      <div className="flex items-center gap-2.5">
-                        <div 
-                          className="w-4 h-4 rounded flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${productColor}15`,
-                            color: productColor,
-                          }}
-                        >
-                          <ProductIcon className="w-3 h-3" />
-                        </div>
-                        <span>{selected.label}</span>
-                      </div>
-                    );
-                  }
-                  return <SelectValue placeholder="Selecciona un producto..." />;
-                })() : <SelectValue placeholder="Selecciona un producto..." />}
-              </SelectTrigger>
-              <SelectContent>
-                {discoveredProducts.map((product, i) => {
-                  const ProductIcon = product.icon ? getIconByName(product.icon) : Package;
-                  const productColor = product.color || "#3B82F6";
-                  return (
-                    <SelectItem key={i} value={product.value}>
-                      <div className="flex items-center gap-2.5">
-                        <div 
-                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${productColor}15`,
-                            color: productColor,
-                          }}
-                        >
-                          <ProductIcon className="w-3.5 h-3.5" />
-                        </div>
-                        <span>{product.label}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-                <SelectSeparator />
-                <SelectItem value="__custom__" className="text-blue-500">
-                  <div className="flex items-center gap-2">
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span>Escribir otro...</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          ) : type === 'servicio' && discoveredServices.length > 0 && showServiceDropdown ? (
-            <Select value={productName} onValueChange={(value) => {
-              if (value === '__custom__') {
-                setShowServiceDropdown(false);
-                setProductName('');
-              } else {
-                setProductName(value);
-              }
-            }}>
-              <SelectTrigger>
-                {productName ? (() => {
-                  const selected = discoveredServices.find(s => s.value === productName);
-                  if (selected) {
-                    const ServiceIcon = selected.icon ? getIconByName(selected.icon) : Briefcase;
-                    const serviceColor = selected.color || "#10B981";
-                    return (
-                      <div className="flex items-center gap-2.5">
-                        <div 
-                          className="w-4 h-4 rounded flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${serviceColor}15`,
-                            color: serviceColor,
-                          }}
-                        >
-                          <ServiceIcon className="w-3 h-3" />
-                        </div>
-                        <span>{selected.label}</span>
-                      </div>
-                    );
-                  }
-                  return <SelectValue placeholder="Selecciona un servicio..." />;
-                })() : <SelectValue placeholder="Selecciona un servicio..." />}
-              </SelectTrigger>
-              <SelectContent>
-                {discoveredServices.map((service, i) => {
-                  const ServiceIcon = service.icon ? getIconByName(service.icon) : Briefcase;
-                  const serviceColor = service.color || "#10B981";
-                  return (
-                    <SelectItem key={i} value={service.value}>
-                      <div className="flex items-center gap-2.5">
-                        <div 
-                          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-                          style={{
-                            backgroundColor: `${serviceColor}15`,
-                            color: serviceColor,
-                          }}
-                        >
-                          <ServiceIcon className="w-3.5 h-3.5" />
-                        </div>
-                        <span>{service.label}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-                <SelectSeparator />
-                <SelectItem value="__custom__" className="text-blue-500">
-                  <div className="flex items-center gap-2">
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span>Escribir otro...</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="relative">
-              <Input
-                id="productName"
-                placeholder={`Ej: ${type === "producto" ? "Zapatillas Runner X" : "Consultoría Fiscal"}`}
-                className="glass-input h-12 text-base rounded-2xl px-4"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-              />
-              {((type === 'producto' && discoveredProducts.length > 0) || (type === 'servicio' && discoveredServices.length > 0)) && (
+        <AnimatePresence>
+          {shouldShowProductSection && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, y: 20 }}
+              animate={{ opacity: 1, height: "auto", y: 0 }}
+              exit={{ opacity: 0, height: 0, y: 20 }}
+              className="space-y-5 overflow-hidden"
+            >
+              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/50 shadow-inner">
                 <button
-                  type="button"
-                  onClick={() => {
-                    if (type === 'producto') setShowProductDropdown(true);
-                    else setShowServiceDropdown(true);
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors"
+                  onClick={() => setType("producto")}
+                  className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
+                    type === "producto"
+                      ? "text-slate-900 glass-input shadow-md"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
                 >
-                  Ver opciones
+                  <Package className={`w-4 h-4 ${type === "producto" ? "text-slate-900" : "text-slate-400"}`} />
+                  <span>
+                    Productos
+                    {discoveredProducts.length > 0 && (
+                      <span className="font-bold"> ({discoveredProducts.length})</span>
+                    )}
+                  </span>
                 </button>
-              )}
-            </div>
+                <button
+                  onClick={() => setType("servicio")}
+                  className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden flex items-center justify-center gap-2 ${
+                    type === "servicio"
+                      ? "text-slate-900 glass-input shadow-md"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  <Briefcase className={`w-4 h-4 ${type === "servicio" ? "text-slate-900" : "text-slate-400"}`} />
+                  <span>
+                    Servicios
+                    {discoveredServices.length > 0 && (
+                      <span className="font-bold"> ({discoveredServices.length})</span>
+                    )}
+                  </span>
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                <Label htmlFor="productName" className="text-sm font-medium text-slate-500 ml-1">
+                  Nombre del {type}
+                </Label>
+                {type === 'producto' && discoveredProducts.length > 0 && showProductDropdown ? (
+                  <Select value={productName} onValueChange={(value) => {
+                    if (value === '__custom__') {
+                      setShowProductDropdown(false);
+                      setProductName('');
+                    } else {
+                      setProductName(value);
+                    }
+                  }}>
+                    <SelectTrigger>
+                      {productName ? (() => {
+                        const selected = discoveredProducts.find(p => p.value === productName);
+                        if (selected) {
+                          const ProductIcon = selected.icon ? getIconByName(selected.icon) : Package;
+                          const productColor = selected.color || "#3B82F6";
+                          return (
+                            <div className="flex items-center gap-2.5">
+                              <div 
+                                className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                                style={{
+                                  backgroundColor: `${productColor}15`,
+                                  color: productColor,
+                                }}
+                              >
+                                <ProductIcon className="w-3 h-3" />
+                              </div>
+                              <span>{selected.label}</span>
+                            </div>
+                          );
+                        }
+                        return <SelectValue placeholder="Selecciona un producto..." />;
+                      })() : <SelectValue placeholder="Selecciona un producto..." />}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {discoveredProducts.map((product, i) => {
+                        const ProductIcon = product.icon ? getIconByName(product.icon) : Package;
+                        const productColor = product.color || "#3B82F6";
+                        return (
+                          <SelectItem key={i} value={product.value}>
+                            <div className="flex items-center gap-2.5">
+                              <div 
+                                className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                                style={{
+                                  backgroundColor: `${productColor}15`,
+                                  color: productColor,
+                                }}
+                              >
+                                <ProductIcon className="w-3.5 h-3.5" />
+                              </div>
+                              <span>{product.label}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                      <SelectSeparator />
+                      <SelectItem value="__custom__" className="text-blue-500">
+                        <div className="flex items-center gap-2">
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Escribir otro...</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : type === 'servicio' && discoveredServices.length > 0 && showServiceDropdown ? (
+                  <Select value={productName} onValueChange={(value) => {
+                    if (value === '__custom__') {
+                      setShowServiceDropdown(false);
+                      setProductName('');
+                    } else {
+                      setProductName(value);
+                    }
+                  }}>
+                    <SelectTrigger>
+                      {productName ? (() => {
+                        const selected = discoveredServices.find(s => s.value === productName);
+                        if (selected) {
+                          const ServiceIcon = selected.icon ? getIconByName(selected.icon) : Briefcase;
+                          const serviceColor = selected.color || "#10B981";
+                          return (
+                            <div className="flex items-center gap-2.5">
+                              <div 
+                                className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                                style={{
+                                  backgroundColor: `${serviceColor}15`,
+                                  color: serviceColor,
+                                }}
+                              >
+                                <ServiceIcon className="w-3 h-3" />
+                              </div>
+                              <span>{selected.label}</span>
+                            </div>
+                          );
+                        }
+                        return <SelectValue placeholder="Selecciona un servicio..." />;
+                      })() : <SelectValue placeholder="Selecciona un servicio..." />}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {discoveredServices.map((service, i) => {
+                        const ServiceIcon = service.icon ? getIconByName(service.icon) : Briefcase;
+                        const serviceColor = service.color || "#10B981";
+                        return (
+                          <SelectItem key={i} value={service.value}>
+                            <div className="flex items-center gap-2.5">
+                              <div 
+                                className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+                                style={{
+                                  backgroundColor: `${serviceColor}15`,
+                                  color: serviceColor,
+                                }}
+                              >
+                                <ServiceIcon className="w-3.5 h-3.5" />
+                              </div>
+                              <span>{service.label}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                      <SelectSeparator />
+                      <SelectItem value="__custom__" className="text-blue-500">
+                        <div className="flex items-center gap-2">
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Escribir otro...</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="relative">
+                    <Input
+                      id="productName"
+                      placeholder={`Ej: ${type === "producto" ? "Zapatillas Runner X" : "Consultoría Fiscal"}`}
+                      className="glass-input h-12 text-base rounded-2xl px-4"
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                    />
+                    {((type === 'producto' && discoveredProducts.length > 0) || (type === 'servicio' && discoveredServices.length > 0)) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (type === 'producto') setShowProductDropdown(true);
+                          else setShowServiceDropdown(true);
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors"
+                      >
+                        Ver opciones
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
       <div className="pt-6 flex justify-end">

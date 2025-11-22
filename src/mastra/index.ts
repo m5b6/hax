@@ -9,6 +9,7 @@ import {
   postExtractor2Agent,
   postExtractor3Agent
 } from "../agents/post-extractor-agent";
+import { runwayVideoAgent } from "./agents/runway-video-agent";
 
 export const mastra = new Mastra({
   agents: {
@@ -19,13 +20,8 @@ export const mastra = new Mastra({
     campaignVisualizerAgent,
     postExtractor1Agent,
     postExtractor2Agent,
-    postExtractor3Agent
+    postExtractor3Agent,
+    runwayVideoAgent
   },
-import { runwayVideoAgent } from "./agents/runway-video-agent";
-
-
-export const mastra = new Mastra({
-  agents: { urlAnalyzerAgent, videoPromptAgent, imagePromptAgent, mcqAgent, runwayVideoAgent },
 });
-
 

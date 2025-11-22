@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon } from "lucide-react";
+import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Instagram } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import DomeGallery from "./DomeGallery";
 import { useWizardStore } from "@/contexts/WizardStore";
 import { useBrand } from "@/contexts/BrandContext";
 import { StepTransitionLoader } from "./StepTransitionLoader";
@@ -34,6 +33,13 @@ const getIconByName = (iconName: string): LucideIcon => {
 
   return Sparkles;
 };
+
+interface GeneratedPost {
+  id: number;
+  description: string;
+  imageUrl?: string;
+  imageError?: string;
+}
 
 export const StepFinal = () => {
   const wizardStore = useWizardStore();
@@ -113,6 +119,12 @@ export const StepFinal = () => {
   const [videoPrompt, setVideoPrompt] = useState<string | null>(null);
   const hasGeneratedRef = useRef(false);
   const promptContainerRef = useRef<HTMLDivElement>(null);
+
+  // Post generation state
+  const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
+  const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
+  const hasGeneratedPostsRef = useRef(false);
+  const [postGenerationError, setPostGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
     // Only generate once when component mounts
@@ -235,6 +247,57 @@ export const StepFinal = () => {
     }
   }, [streamedPrompt]);
 
+  // Generate posts effect
+  useEffect(() => {
+    if (hasGeneratedPostsRef.current) return;
+    
+    // Check if we already have posts in store
+    const existingPosts = wizardStore.getAgentResponse("generatedPosts");
+    if (existingPosts) {
+      setGeneratedPosts(existingPosts);
+      return;
+    }
+
+    hasGeneratedPostsRef.current = true;
+    setIsGeneratingPosts(true);
+
+    const generatePosts = async () => {
+      const wizardData = {
+        inputs: wizardStore.getAllInputs(),
+        agentResponses: wizardStore.getAllAgentResponses(),
+        metadata: wizardStore.data.metadata,
+      };
+
+      try {
+        const response = await fetch("/api/workflow/post-generation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(wizardData),
+        });
+
+        if (!response.ok) throw new Error("Failed to generate posts");
+        
+        const result = await response.json();
+        
+        if (result.success && Array.isArray(result.posts)) {
+          setGeneratedPosts(result.posts);
+          // Store in wizard store manually since it's a custom key
+          // @ts-ignore
+          wizardStore.setAgentResponse("generatedPosts", result.posts);
+        } else {
+            throw new Error(result.error || "Failed to generate posts");
+        }
+      } catch (error: any) {
+        console.error("Error generating posts:", error);
+        setPostGenerationError(error.message);
+      } finally {
+        setIsGeneratingPosts(false);
+      }
+    };
+
+    generatePosts();
+  }, [wizardStore]);
+
   // Get video prompt from store or state
   const finalVideoPrompt = videoPrompt || wizardStore.getAgentResponse("videoPrompt") || "";
   const displayPrompt = isGenerating ? streamedPrompt : finalVideoPrompt;
@@ -242,7 +305,6 @@ export const StepFinal = () => {
   // Video generation state
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoResult, setVideoResult] = useState<string | null>(null);
-  const [showGallery, setShowGallery] = useState(false);
   const hasGeneratedVideoRef = useRef(false);
 
   // Trigger video generation when prompt is ready
@@ -253,13 +315,11 @@ export const StepFinal = () => {
     const existingVideo = wizardStore.getAgentResponse("videoResult");
     if (existingVideo) {
       setVideoResult(existingVideo);
-      setShowGallery(true);
       return;
     }
 
     hasGeneratedVideoRef.current = true;
     setIsGeneratingVideo(true);
-    setShowGallery(true);
 
     const generateVideo = async () => {
       try {
@@ -317,21 +377,13 @@ export const StepFinal = () => {
     generateVideo();
   }, [displayPrompt, isGenerating, wizardStore]);
 
-  // Show error state if generation failed
-  if (generationError) {
-    return (
-      <div className="text-center space-y-6">
-        <div className="text-red-500 text-xl">❌ Error al generar las imágenes</div>
-        <p className="text-slate-600">{generationError}</p>
-        <Button onClick={() => window.location.reload()}>
-          Intentar de nuevo
-        </Button>
-      </div>
-    );
-  }
+  // Carousel state
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const nextSlide = () => setCurrentSlide(prev => (prev + 1) % generatedPosts.length);
+  const prevSlide = () => setCurrentSlide(prev => (prev - 1 + generatedPosts.length) % generatedPosts.length);
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-6">
       {/* Video Prompt Card - Always show, even before streaming starts */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -481,7 +533,7 @@ export const StepFinal = () => {
         </motion.div>
       )}
 
-      {/* Generating Posts Block - Show when first card is complete */}
+      {/* Generating Posts Block - Carousel */}
       {!isGenerating && displayPrompt && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -496,8 +548,8 @@ export const StepFinal = () => {
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
               <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
                 <div className="flex items-center gap-2">
-                    {isGeneratingVideo ? (
-                        <Video className="w-4 h-4 text-slate-500" />
+                    {isGeneratingPosts ? (
+                        <Sparkles className="w-4 h-4 text-slate-500" />
                     ) : (
                         <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
                             <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
@@ -513,13 +565,13 @@ export const StepFinal = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {isGeneratingVideo ? (
+              {isGeneratingPosts ? (
                 <div className="flex items-center justify-center py-12">
                   <RotatingLoader
                     items={[
-                      { text: "Renderizando video", icon: Video },
-                      { text: "Aplicando efectos", icon: Sparkles },
-                      { text: "Finalizando", icon: Film },
+                      { text: "Redactando anuncios", icon: FileText },
+                      { text: "Diseñando imágenes", icon: ImageIcon },
+                      { text: "Optimizando para redes", icon: Share2 },
                     ]}
                     spinnerSize="sm"
                     textSize="sm"
@@ -528,20 +580,74 @@ export const StepFinal = () => {
                     className="text-slate-500"
                   />
                 </div>
-              ) : showGallery ? (
-                 <div className="w-full h-[500px] bg-white">
-                    <DomeGallery
-                      images={Array.from({ length: 75 }, () => PLACEHOLDER_IMAGE)}
-                      videoUrl={videoResult || undefined}
-                      logoUrl={brandLogoUrl}
-                      name={data.name}
-                      grayscale={false}
-                      segments={15}
-                    />
+              ) : generatedPosts.length > 0 ? (
+                 <div className="relative w-full bg-slate-50/50 group">
+                    <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentSlide}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.3 }}
+                                className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
+                            >
+                                <div className="relative aspect-[9/16] h-[360px] rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-white">
+                                    {generatedPosts[currentSlide].imageUrl ? (
+                                        <img 
+                                            src={generatedPosts[currentSlide].imageUrl} 
+                                            alt={`Generated post ${currentSlide + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+                                            <ImageIcon className="w-12 h-12 opacity-20" />
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-sm text-slate-600 text-center max-w-md line-clamp-3 px-4">
+                                    {generatedPosts[currentSlide].description}
+                                </p>
+                            </motion.div>
+                        </AnimatePresence>
+                        
+                        {/* Navigation Controls */}
+                        {generatedPosts.length > 1 && (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={prevSlide}
+                                >
+                                    <ChevronLeft className="w-5 h-5 text-slate-700" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={nextSlide}
+                                >
+                                    <ChevronRight className="w-5 h-5 text-slate-700" />
+                                </Button>
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                    {generatedPosts.map((_, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setCurrentSlide(idx)}
+                                            className={`w-2 h-2 rounded-full transition-colors ${
+                                                idx === currentSlide ? "bg-slate-800" : "bg-slate-300"
+                                            }`}
+                                        />
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
                  </div>
               ) : (
                 <div className="p-8 text-center text-slate-400 text-sm">
-                    No se pudo generar el video.
+                   {postGenerationError || "No se pudo generar el contenido."}
                 </div>
               )}
             </CardContent>
@@ -550,7 +656,7 @@ export const StepFinal = () => {
       )}
 
       {/* Connecting Flow - Active Data Link to Upload Step */}
-      {!isGenerating && displayPrompt && videoResult && (
+      {!isGenerating && displayPrompt && generatedPosts.length > 0 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
@@ -597,7 +703,7 @@ export const StepFinal = () => {
       )}
 
       {/* Upload to Instagram Step */}
-      {!isGenerating && displayPrompt && videoResult && (
+      {!isGenerating && displayPrompt && generatedPosts.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -629,3 +735,4 @@ export const StepFinal = () => {
     </div>
   );
 };
+
