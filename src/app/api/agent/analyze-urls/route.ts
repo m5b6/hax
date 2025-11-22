@@ -1,7 +1,5 @@
-import { mastra } from "@/agents";
+import { mastra } from "@/mastra";
 import { NextRequest } from "next/server";
-
-export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,7 +39,7 @@ Usa el urlReaderTool para leer cada URL.`;
       format: "aisdk",
     });
 
-    return stream.toDataStreamResponse();
+    return stream.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Error analyzing URLs:", error);
     return new Response(

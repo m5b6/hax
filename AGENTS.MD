@@ -128,7 +128,7 @@ A medida que el modelo streaméa su respuesta:
    - Retornar `stream.toDataStreamResponse()` desde API routes
 
 2. **API Routes**:
-   - Configurar `export const runtime = "edge"` para mejor rendimiento
+   - Usar Node.js runtime (no edge) ya que Mastra requiere Node.js streams
    - Validar inputs antes de llamar al agente
    - Manejar errores gracefully con respuestas JSON apropiadas
 
@@ -147,7 +147,7 @@ A medida que el modelo streaméa su respuesta:
 5. **Ejemplo de implementación**:
 ```typescript
 const stream = await agent.stream(prompt, { format: "aisdk" });
-return stream.toDataStreamResponse();
+return stream.toUIMessageStreamResponse();
 
 const reader = response.body?.getReader();
 const decoder = new TextDecoder();

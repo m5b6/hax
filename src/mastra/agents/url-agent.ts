@@ -1,6 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { openai } from "@ai-sdk/openai";
-import { urlReaderTool } from "./tools/url-reader";
+import { urlReaderTool } from "../tools/url-reader";
 
 export const urlAnalyzerAgent = new Agent({
   name: "url-analyzer",

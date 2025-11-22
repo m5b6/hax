@@ -3,7 +3,7 @@
 .next/
 out/
 .vercel/
-
+.mastra
 # Node
 node_modules/
 npm-debug.log*
