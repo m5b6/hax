@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
-import { Plus, Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil, Sparkles, Search, Eye } from "lucide-react";
+import { Trash2, ArrowRight, Palette, Info, Package, Briefcase, Users, MessageCircle, DollarSign, Zap, Plug, Code, Pencil, Sparkles, Search, Eye } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InsightsChip } from "./InsightsChip";
@@ -180,7 +180,6 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
     return formatted;
   };
 
-  const addUrl = () => setUrls([...urls, ""]);
   const removeUrl = (index: number) => {
     const removedUrl = urls[index];
     const formattedUrl = removedUrl ? formatUrl(removedUrl) : null;
@@ -370,36 +369,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
     if (!name || !identity || !productName) return;
     
     // All data is already synced to store via useEffect hooks
-    // Trigger MCQ generation in background and move to next step immediately
-    // StepStrategy will show loading while MCQs are being generated
-    
-    const wizardData = {
-      inputs: wizardStore.getAllInputs(),
-      agentResponses: wizardStore.getAllAgentResponses(),
-      metadata: wizardStore.data.metadata,
-    };
-
-    // Start MCQ generation in background (don't await)
-    fetch("/api/agent/generate-mcqs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wizardData }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to generate MCQs");
-        }
-        return response.json();
-      })
-      .then(({ questions }) => {
-        // Store MCQs in wizard store when ready
-        wizardStore.setAgentResponse("mcqQuestions", questions);
-      })
-      .catch((error) => {
-        console.error("Error generating MCQs:", error);
-      });
-
-    // Move to next step immediately
+    // StepStrategy will handle MCQ generation when it mounts
     onNext();
   };
 
@@ -408,33 +378,6 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
   return (
     <div className="space-y-8">
       <div className="space-y-5">
-        <div className="space-y-2.5">
-          <Label htmlFor="name" className="text-sm font-medium text-slate-500 ml-1">
-            Nombre del negocio o marca
-          </Label>
-          <Input
-            id="name"
-            placeholder="Ej: Vita, Mi Gimnasio, etc."
-            className="glass-input h-12 text-base rounded-2xl px-4"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-          />
-        </div>
-
-        <div className="space-y-2.5">
-          <Label htmlFor="identity" className="text-sm font-medium text-slate-500 ml-1">
-            {name ? `Cuéntanos sobre ${name}` : "Cuéntanos sobre tu negocio"}
-          </Label>
-          <Input
-            id="identity"
-            placeholder="Describe brevemente qué hace..."
-            className="glass-input h-12 text-base rounded-2xl px-4"
-            value={identity}
-            onChange={(e) => setIdentity(e.target.value)}
-          />
-        </div>
-
         <div className="space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <Label className="text-sm font-medium text-slate-500 ml-1">Sus URLs</Label>
@@ -469,6 +412,7 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
                         value={url}
                         onChange={(e) => updateUrl(index, e.target.value)}
                         disabled={!!isAnalyzing}
+                        autoFocus
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
                         <AnimatePresence mode="wait">
@@ -527,14 +471,32 @@ export const StepIdentity = ({ onNext, onAnalyzingChange }: StepIdentityProps) =
               })}
             </AnimatePresence>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={addUrl}
-            className="h-8 px-3 rounded-full text-xs font-medium text-slate-400 hover:text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-all active:scale-[0.96]"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Agregar otra URL
-          </Button>
+        </div>
+
+        <div className="space-y-2.5">
+          <Label htmlFor="name" className="text-sm font-medium text-slate-500 ml-1">
+            Nombre del negocio o marca
+          </Label>
+          <Input
+            id="name"
+            placeholder="Ej: Vita, Mi Gimnasio, etc."
+            className="glass-input h-12 text-base rounded-2xl px-4"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2.5">
+          <Label htmlFor="identity" className="text-sm font-medium text-slate-500 ml-1">
+            {name ? `Cuéntanos sobre ${name}` : "Cuéntanos sobre tu negocio"}
+          </Label>
+          <Input
+            id="identity"
+            placeholder="Describe brevemente qué hace..."
+            className="glass-input h-12 text-base rounded-2xl px-4"
+            value={identity}
+            onChange={(e) => setIdentity(e.target.value)}
+          />
         </div>
 
         <AnimatePresence>

@@ -1,21 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { WizardLayout } from "@/components/wizard/WizardLayout";
 import { StepIdentity } from "@/components/wizard/StepIdentity";
 import { StepStrategy } from "@/components/wizard/StepStrategy";
 import { StepFinal } from "@/components/wizard/StepFinal";
 import { useWizardStore } from "@/contexts/WizardStore";
-import { StartupAnimation } from "@/components/StartupAnimation";
-
 function WizardContent() {
   const searchParams = useSearchParams();
   const initialStep = parseInt(searchParams.get("step") || "0");
   const [step, setStep] = useState(initialStep);
-  const [showStartup, setShowStartup] = useState(true);
-  const [showMainSurface, setShowMainSurface] = useState(false);
   const wizardStore = useWizardStore();
   
   // Update step if URL param changes
@@ -69,29 +64,15 @@ function WizardContent() {
   const currentStepData = steps[step] || steps[0];
 
   return (
-    <>
-      {showStartup && (
-        <StartupAnimation 
-          onComplete={() => setShowStartup(false)} 
-          onStartMoving={() => setShowMainSurface(true)}
-        />
-      )}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: showMainSurface ? 1 : 0 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <WizardLayout
-          currentStep={step}
-          totalSteps={steps.length}
-          title={getStepTitle(step)}
-          subtitle={currentStepData.subtitle}
-          isAnalyzing={isAnalyzing}
-        >
-          {currentStepData.component}
-        </WizardLayout>
-      </motion.div>
-    </>
+    <WizardLayout
+      currentStep={step}
+      totalSteps={steps.length}
+      title={getStepTitle(step)}
+      subtitle={currentStepData.subtitle}
+      isAnalyzing={isAnalyzing}
+    >
+      {currentStepData.component}
+    </WizardLayout>
   );
 }
 

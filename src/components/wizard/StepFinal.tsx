@@ -279,10 +279,16 @@ export const StepFinal = () => {
         await new Promise(resolve => setTimeout(resolve, 10000));
 
         // Crear posts con URLs hardcodeadas
+        const demoCaptions = [
+          "✨ Descubre la nueva era de la innovación. El diseño que transforma tu día a día. #Innovación #Tecnología #Futuro",
+          "🚀 Potencia sin límites. Rendimiento que supera todas las expectativas. ¿Estás listo para el siguiente nivel?",
+          "🎨 Arte y tecnología se unen. Cada detalle cuenta una historia única. Experimenta la perfección."
+        ];
+
         const demoPosts: GeneratedPost[] = DEMO_IMAGE_URLS.map((url, idx) => ({
           id: idx + 1,
-          description: `Post de demostración ${idx + 1} generado con tecnología de IA avanzada`,
-          caption: `Caption optimizado para máximo engagement en redes sociales - Post ${idx + 1}`,
+          description: `Post de demostración ${idx + 1}`,
+          caption: demoCaptions[idx] || `Descubre lo increíble. Post ${idx + 1} #Demo`,
           imageUrl: url,
         }));
 
@@ -1146,7 +1152,7 @@ export const StepFinal = () => {
         )
       }
 
-      {/* Instagram Modal - App Style (Portalled) */}
+      {/* Instagram Modal - Simpler & Smaller */}
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isInstagramModalOpen && (
@@ -1161,417 +1167,228 @@ export const StepFinal = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 onClick={() => !isPostingToInstagram && setIsInstagramModalOpen(false)}
               />
 
               {/* Modal Content */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                transition={{
-                  type: "spring",
-                  damping: 25,
-                  stiffness: 300,
-                  mass: 0.8
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/5"
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 flex flex-col max-h-[85vh]"
               >
-                <div className="bg-white/95 backdrop-blur-xl p-10 flex flex-col gap-8 max-h-[90vh] overflow-y-auto">
-                  
+                {/* Header Gradient Line */}
+                <div className="h-1 w-full bg-gradient-to-r from-yellow-400 via-red-500 to-purple-500 flex-shrink-0" />
+
+                <div className="p-6 overflow-y-auto">
                   {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <h3 className="font-serif text-3xl text-slate-900 leading-tight">
-                      Publicar en<br />Instagram
-                    </h3>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-slate-50 rounded-xl">
+                        <Instagram className="w-6 h-6 text-[#E1306C]" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-900 text-lg leading-tight">Instagram</h3>
+                        <p className="text-slate-500 text-xs font-medium">
+                          {brandName || "Tu campaña"}
+                        </p>
+                      </div>
+                    </div>
                     {!isPostingToInstagram && (
                       <button
                         onClick={() => setIsInstagramModalOpen(false)}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 transition-colors"
                       >
-                        <span className="text-xl leading-none mb-1">&times;</span>
+                        <span className="text-xl leading-none">&times;</span>
                       </button>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="min-h-[200px] flex flex-col justify-start">
-                    <AnimatePresence mode="wait">
-                      {isPostingToInstagram || instagramPostResponses.length > 0 ? (
-                        <motion.div
-                          key="loading"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex flex-col gap-6 py-4 w-full"
-                        >
-                          <div className="grid grid-cols-2 gap-4">
-                            {/* Video Loader */}
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="flex flex-col items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 min-h-[200px] justify-center"
-                            >
-                              {(() => {
-                                const videoPost = instagramPostResponses.find(r => r.type === 'video');
-                                if (videoPost) {
-                                  return (
-                                    <>
-                                      <QRCodeSVG
-                                        value={videoPost.permalink}
-                                        size={120}
-                                        level="H"
-                                        includeMargin={true}
-                                        className="rounded-lg bg-white p-2"
-                                      />
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <Video className="w-4 h-4 text-purple-500" />
-                                        <span className="text-xs font-semibold text-slate-700">Video</span>
-                                      </div>
-                                      <a
-                                        href={videoPost.permalink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium underline mt-1"
-                                      >
-                                        Ver en Instagram
-                                      </a>
-                                    </>
-                                  );
-                                }
-                                return (
-                                  <>
-                                    <div className="relative w-10 h-10">
-                                      <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
-                                    </div>
-                                    <RotatingLoader
-                                      items={[
-                                        { text: "Publicando video...", icon: Video }
-                                      ]}
-                                      spinnerSize="sm"
-                                      textSize="sm"
-                                      showSpinner={false}
-                                    />
-                                    <div className="text-xs text-slate-500">
-                                      En proceso...
-                                    </div>
-                                  </>
-                                );
-                              })()}
-                            </motion.div>
+                  {/* Content States */}
+                  <AnimatePresence mode="wait">
+                    {/* STATE 1: CONFIRMATION */}
+                    {!isPostingToInstagram && instagramPostResponses.length === 0 && !instagramApiResponse && (
+                      <motion.div
+                        key="confirm"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                      >
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                          <div className="flex items-center gap-4 mb-4">
+                             {/* Video Thumbnail */}
+                             <div className="relative w-16 h-24 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
+                               {videoResult ? (
+                                 <video src={videoResult} className="w-full h-full object-cover opacity-80" />
+                               ) : (
+                                 <Video className="w-6 h-6 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                               )}
+                               <div className="absolute bottom-1 right-1 bg-black/50 rounded px-1 py-0.5">
+                                 <Video className="w-3 h-3 text-white" />
+                               </div>
+                             </div>
+                             {/* Stats */}
+                             <div className="flex-1 space-y-2">
+                               <div className="flex items-center justify-between text-sm">
+                                 <span className="text-slate-600">1 Reel</span>
+                                 <span className="text-slate-900 font-medium">Listo</span>
+                               </div>
+                               <div className="flex items-center justify-between text-sm">
+                                 <span className="text-slate-600">{generatedPosts.length} Posts</span>
+                                 <span className="text-slate-900 font-medium">Listos</span>
+                               </div>
+                               <div className="h-px bg-slate-200 my-2" />
+                               <p className="text-xs text-slate-500">
+                                 Se publicarán automáticamente en tu perfil.
+                               </p>
+                             </div>
+                          </div>
+                        </div>
 
-                            {/* Image Loaders */}
-                            {generatedPosts.map((post, idx) => {
-                              const completedImages = instagramPostResponses.filter(r => r.type === 'image');
-                              const imagePost = completedImages[idx];
-                              
-                              return (
-                                <motion.div
-                                  key={idx}
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: idx * 0.1 }}
-                                  className="flex flex-col items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 min-h-[200px] justify-center"
+                        <Button
+                          onClick={executeInstagramUpload}
+                          className="w-full h-12 bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-90 text-white font-medium rounded-xl shadow-lg shadow-pink-500/20 transition-all"
+                        >
+                          Publicar ahora
+                        </Button>
+                      </motion.div>
+                    )}
+
+                    {/* STATE 2: POSTING / SUCCESS */}
+                    {(isPostingToInstagram || instagramPostResponses.length > 0) && (
+                      <motion.div
+                        key="posting"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6"
+                      >
+                        {/* Grid Container - 2 Columns */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Video Status */}
+                          <div className="flex flex-col gap-3 p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                <Video className="w-5 h-5 text-slate-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-900">Reel de campaña</p>
+                                <p className="text-xs text-slate-500">
+                                  {instagramPostResponses.some(p => p.type === 'video') ? "¡Publicado!" : "Subiendo video..."}
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0">
+                                {instagramPostResponses.some(p => p.type === 'video') ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                ) : (
+                                  <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                                )}
+                              </div>
+                            </div>
+                            
+                            {instagramPostResponses.find(p => p.type === 'video') && (
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="w-full flex flex-col items-center gap-3 pt-2 border-t border-slate-50"
+                              >
+                                <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
+                                  <QRCodeSVG 
+                                    value={instagramPostResponses.find(p => p.type === 'video')?.permalink || ''}
+                                    size={200}
+                                    level="H"
+                                    includeMargin={true}
+                                  />
+                                </div>
+                                <a 
+                                  href={instagramPostResponses.find(p => p.type === 'video')?.permalink} 
+                                  target="_blank" 
+                                  className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
                                 >
-                                  {imagePost ? (
-                                    <>
-                                      <QRCodeSVG
-                                        value={imagePost.permalink}
-                                        size={120}
+                                  Ver en Instagram <ArrowRight className="w-4 h-4" />
+                                </a>
+                              </motion.div>
+                            )}
+                          </div>
+
+                          {/* Images Status */}
+                          {generatedPosts.map((post, idx) => {
+                            const response = instagramPostResponses.filter(p => p.type === 'image')[idx];
+                            
+                            return (
+                              <div key={idx} className="flex flex-col gap-3 p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                    {post.imageUrl ? (
+                                      <img src={post.imageUrl} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <ImageIcon className="w-5 h-5 text-slate-500" />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-900 truncate">Post {idx + 1}</p>
+                                    <p className="text-xs text-slate-500">
+                                      {response ? "¡Publicado!" : (isPostingToInstagram ? "En cola..." : "Pendiente")}
+                                    </p>
+                                  </div>
+                                  <div className="flex-shrink-0">
+                                    {response ? (
+                                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                    ) : (
+                                      isPostingToInstagram ? <Loader2 className="w-4 h-4 text-slate-400 animate-spin" /> : <div className="w-4 h-4 rounded-full border border-slate-300" />
+                                    )}
+                                  </div>
+                                </div>
+
+                                {response && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="w-full flex flex-col items-center gap-3 pt-2 border-t border-slate-50"
+                                  >
+                                    <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
+                                      <QRCodeSVG 
+                                        value={response.permalink}
+                                        size={200}
                                         level="H"
                                         includeMargin={true}
-                                        className="rounded-lg bg-white p-2"
                                       />
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <ImageIcon className="w-4 h-4 text-blue-500" />
-                                        <span className="text-xs font-semibold text-slate-700">Imagen {idx + 1}</span>
-                                      </div>
-                                      <a
-                                        href={imagePost.permalink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium underline mt-1"
-                                      >
-                                        Ver en Instagram
-                                      </a>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="relative w-10 h-10">
-                                        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-                                      </div>
-                                      <RotatingLoader
-                                        items={[
-                                          { text: `Publicando imagen ${idx + 1}...`, icon: ImageIcon }
-                                        ]}
-                                        spinnerSize="sm"
-                                        textSize="sm"
-                                        showSpinner={false}
-                                      />
-                                      <div className="text-xs text-slate-500">
-                                        En proceso...
-                                      </div>
-                                    </>
-                                  )}
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                          <div className="text-center pt-2">
-                            <p className="text-slate-600 text-sm font-medium">
-                              Progreso: {instagramPostResponses.length} de 4 publicaciones
-                            </p>
-                          </div>
-                        </motion.div>
-                      ) : instagramApiResponse ? (
-                        <motion.div
-                          key="success"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex flex-col gap-6"
-                        >
-                          <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                            <span className="font-medium text-sm">
-                              {instagramPostResponses.length > 0 
-                                ? `${instagramPostResponses.length} publicación${instagramPostResponses.length > 1 ? 'es' : ''} exitosa${instagramPostResponses.length > 1 ? 's' : ''}`
-                                : 'Publicación exitosa'}
-                            </span>
-                          </div>
-
-                          {instagramPostResponses.length > 0 ? (
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                {instagramPostResponses.map((post, idx) => {
-                                  // Count images separately from video
-                                  const imageIndex = instagramPostResponses
-                                    .slice(0, idx + 1)
-                                    .filter(p => p.type === 'image').length;
-                                  
-                                  return (
-                                    <motion.div
-                                      key={post.id}
-                                      initial={{ opacity: 0, scale: 0.9 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      transition={{ delay: idx * 0.1 }}
-                                      className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border border-slate-200"
+                                    </div>
+                                    <a 
+                                      href={response.permalink} 
+                                      target="_blank" 
+                                      className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
                                     >
-                                      <div className="flex items-center gap-2 mb-1">
-                                        {post.type === 'video' ? (
-                                          <Video className="w-4 h-4 text-purple-500" />
-                                        ) : (
-                                          <ImageIcon className="w-4 h-4 text-blue-500" />
-                                        )}
-                                        <span className="text-xs font-medium text-slate-700">
-                                          {post.type === 'video' ? 'Video' : `Imagen ${imageIndex}`}
-                                        </span>
-                                      </div>
-                                      <QRCodeSVG
-                                        value={post.permalink}
-                                        size={120}
-                                        level="H"
-                                        includeMargin={false}
-                                        className="rounded-lg"
-                                      />
-                                      <a
-                                        href={post.permalink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-blue-600 hover:text-blue-700 truncate max-w-full px-2"
-                                      >
-                                        Ver en Instagram
-                                      </a>
-                                    </motion.div>
-                                  );
-                                })}
+                                      Ver en Instagram <ArrowRight className="w-4 h-4" />
+                                    </a>
+                                  </motion.div>
+                                )}
                               </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">Respuesta API</span>
-                              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100 overflow-hidden">
-                                <pre className="text-xs text-slate-600 font-mono overflow-auto max-h-[150px]">
-                                  {JSON.stringify(instagramApiResponse, null, 2)}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
-
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Error State */}
+                        {instagramApiResponse?.error && (
+                           <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+                             Error: {instagramApiResponse.error}
+                           </div>
+                        )}
+                        
+                        {/* Finish Button */}
+                        {!isPostingToInstagram && instagramPostResponses.length > 0 && (
                           <Button
                             onClick={() => setIsInstagramModalOpen(false)}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-lg h-12 font-medium transition-all"
+                            className="w-full mt-2 h-12 text-base"
+                            variant="outline"
                           >
                             Cerrar
                           </Button>
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                           key="confirm"
-                           initial={{ opacity: 0 }}
-                           animate={{ opacity: 1 }}
-                           className="flex flex-col gap-6"
-                        >
-                           <div className="space-y-4">
-                             <h4 className="text-lg font-semibold text-slate-900">
-                               Vista previa de contenido a publicar
-                             </h4>
-                             
-                             {/* Video Preview */}
-                             <div className="w-full max-w-sm mx-auto bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-10">
-                               {/* Insta Header */}
-                               <div className="flex items-center justify-between p-3 border-b border-slate-100">
-                                 <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 p-[2px]">
-                                      <div className="w-full h-full rounded-full bg-white p-[2px] overflow-hidden">
-                                        {brandLogoUrl ? (
-                                          <img src={brandLogoUrl} alt="Profile" className="w-full h-full object-cover rounded-full" />
-                                        ) : (
-                                          <div className="w-full h-full bg-slate-200" />
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-col leading-none">
-                                      <span className="text-xs font-semibold text-slate-900">{brandName || "tu_marca"}</span>
-                                      <span className="text-[10px] text-slate-500">Original Audio</span>
-                                    </div>
-                                 </div>
-                                 <MoreHorizontal className="w-4 h-4 text-slate-400" />
-                               </div>
-                               
-                               {/* Content */}
-                               <div className="aspect-[9/16] w-full bg-slate-900 relative">
-                                 {videoResult ? (
-                                   <video
-                                     src={videoResult}
-                                     className="w-full h-full object-cover"
-                                     autoPlay
-                                     muted
-                                     loop
-                                     playsInline
-                                   />
-                                 ) : (
-                                   <div className="w-full h-full flex items-center justify-center text-slate-500">
-                                     <Video className="w-8 h-8" />
-                                   </div>
-                                 )}
-                                 <div className="absolute bottom-4 right-4 flex flex-col gap-4 items-center">
-                                    <div className="flex flex-col items-center gap-1">
-                                      <Heart className="w-6 h-6 text-white drop-shadow-md" />
-                                      <span className="text-xs text-white font-medium drop-shadow-md">4.2k</span>
-                                    </div>
-                                    <div className="flex flex-col items-center gap-1">
-                                      <MessageCircle className="w-6 h-6 text-white drop-shadow-md" />
-                                      <span className="text-xs text-white font-medium drop-shadow-md">128</span>
-                                    </div>
-                                    <Send className="w-6 h-6 text-white drop-shadow-md" />
-                                    <MoreHorizontal className="w-6 h-6 text-white drop-shadow-md rotate-90" />
-                                 </div>
-                               </div>
-
-                               {/* Caption Area */}
-                               <div className="p-3 text-xs space-y-1">
-                                  <p>
-                                    <span className="font-semibold mr-1">{brandName || "tu_marca"}</span>
-                                    Descubre el iPhone 17 Pro. Potencia sin límites, diseño sin igual. La innovación en tus manos. #iPhone17Pro #Apple
-                                  </p>
-                                  <p className="text-slate-400 text-[10px] uppercase">Hace 2 minutos</p>
-                               </div>
-                             </div>
-
-                             {/* Images Preview Grid */}
-                             <div className="space-y-6 mt-10">
-                               <div className="flex items-center gap-3 px-1 mb-4">
-                                 <ImageIcon className="w-4 h-4 text-blue-500" />
-                                 <span className="text-sm font-medium text-slate-700">
-                                   Carrusel de Imágenes ({generatedPosts.length})
-                                 </span>
-                               </div>
-                               
-                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                 {generatedPosts.map((post, idx) => (
-                                   <div key={idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-                                      {/* Mini Header */}
-                                      <div className="flex items-center justify-between p-2 border-b border-slate-50">
-                                         <div className="flex items-center gap-1.5">
-                                            <div className="w-6 h-6 rounded-full bg-slate-100 overflow-hidden">
-                                              {brandLogoUrl && <img src={brandLogoUrl} alt="" className="w-full h-full object-cover" />}
-                                            </div>
-                                            <span className="text-[10px] font-semibold text-slate-900 truncate max-w-[80px]">{brandName || "tu_marca"}</span>
-                                         </div>
-                                         <MoreHorizontal className="w-3 h-3 text-slate-300" />
-                                      </div>
-
-                                      {/* Image */}
-                                      <div className="aspect-square w-full bg-slate-100 relative group">
-                                         {post.imageUrl ? (
-                                           <img src={post.imageUrl} className="w-full h-full object-cover" alt={`Post ${idx}`} />
-                                         ) : (
-                                           <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                              <ImageIcon className="w-6 h-6" />
-                                           </div>
-                                         )}
-                                      </div>
-
-                                      {/* Actions */}
-                                      <div className="p-2 flex justify-between items-center">
-                                        <div className="flex gap-2">
-                                          <Heart className="w-4 h-4 text-slate-800" />
-                                          <MessageCircle className="w-4 h-4 text-slate-800" />
-                                          <Send className="w-4 h-4 text-slate-800" />
-                                        </div>
-                                        <Bookmark className="w-4 h-4 text-slate-800" />
-                                      </div>
-                                      
-                                      {/* Caption snippet */}
-                                      <div className="px-3 pb-4 pt-1 flex-1">
-                                         <p className="text-[10px] line-clamp-2 leading-tight text-slate-600">
-                                           <span className="font-semibold text-slate-900 mr-1">{brandName || "brand"}</span>
-                                           {(() => {
-                                             let caption = post.caption;
-                                             if (!caption) caption = post.description || '';
-                                             if (typeof caption !== 'string') caption = String(caption);
-                                             if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
-                                               try {
-                                                 const parsed = JSON.parse(caption);
-                                                 caption = parsed.caption || parsed.description || caption;
-                                               } catch {}
-                                             }
-                                             return typeof caption === 'string' ? caption : String(caption);
-                                           })()}
-                                         </p>
-                                      </div>
-                                   </div>
-                                 ))}
-                               </div>
-                             </div>
-                           </div>
-                           
-                           <div className="pt-8 border-t border-slate-100 mt-4 sticky bottom-0 bg-white/80 backdrop-blur-md pb-4 -mx-8 px-8">
-                             <div className="flex flex-col gap-4">
-                               <p className="text-slate-500 text-sm text-center font-medium">
-                                 Se publicarán <span className="text-slate-900 font-semibold">1 Reel</span> y <span className="text-slate-900 font-semibold">{generatedPosts.length} Posts</span>
-                               </p>
-                               
-                               <Button
-                                 onClick={executeInstagramUpload}
-                                 className="w-full h-16 text-lg font-semibold text-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)] transform hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden group bg-slate-900 hover:bg-slate-800 border border-white/10"
-                               >
-                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity duration-500" />
-                                 <div className="flex items-center justify-center gap-3 relative z-10">
-                                   <Instagram className="w-6 h-6 text-pink-400" />
-                                   <span className="tracking-wide">PUBLICAR TODO AHORA</span>
-                                   <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                                 </div>
-                               </Button>
-                             </div>
-                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             </motion.div>

@@ -79,12 +79,7 @@ export const WizardLayout = ({
       </div>
 
       {/* Ao. Logo - Top Right of App */}
-      <motion.div
-        layoutId="ao-logo-container"
-        initial={{ opacity: 1, scale: 1 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="fixed top-4 right-8 z-50"
-      >
+      <div className="fixed top-4 right-8 z-50">
         <div className="relative w-12 h-12">
           <motion.div
             className="absolute -inset-1 rounded-full"
@@ -107,7 +102,7 @@ export const WizardLayout = ({
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <main className="w-full max-w-2xl mx-auto relative z-10">
         <AnimatePresence mode="wait" custom={currentStep}>

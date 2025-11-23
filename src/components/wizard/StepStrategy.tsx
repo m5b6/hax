@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import * as LucideIcons from "lucide-react";
 import { ArrowRight, Sparkles, Check, ArrowLeft, Wand2, Search, Zap } from "lucide-react";
@@ -78,6 +78,7 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>(storedMCQAnswers as Record<string, string>);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const requestInProgressRef = useRef(false);
   
   // Get previous data for display
   const previousData = {
@@ -92,8 +93,9 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
   const totalQuestions = mcqQuestions?.length || 0;
 
   useEffect(() => {
-    // If MCQs are not loaded, trigger generation and show loading state
-    if (!mcqQuestions) {
+    // If MCQs are not loaded and no request is in progress, trigger generation
+    if (!mcqQuestions && !requestInProgressRef.current) {
+      requestInProgressRef.current = true;
       setIsAnalyzing(true);
       
       const wizardData = {
@@ -116,13 +118,15 @@ export const StepStrategy = ({ onNext }: StepStrategyProps) => {
         .then(({ questions }) => {
           wizardStore.setAgentResponse("mcqQuestions", questions);
           setIsAnalyzing(false);
+          requestInProgressRef.current = false;
         })
         .catch((error) => {
           console.error("Error generating MCQs:", error);
           setIsAnalyzing(false);
+          requestInProgressRef.current = false;
         });
     }
-  }, [mcqQuestions, wizardStore]);
+  }, [mcqQuestions]);
   
   const handleSelect = (optionId: string, optionColor: string, optionIcon: string, optionText: string) => {
     if (!currentQuestion) return;
