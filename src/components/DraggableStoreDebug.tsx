@@ -78,7 +78,7 @@ export function DraggableStoreDebug() {
       initial={{ x: position.x, y: position.y }}
       animate={{ x: position.x, y: position.y }}
       className="fixed z-[9999] pointer-events-auto"
-      style={{ top: 0, left: 0 }}
+      style={{ top: 0, left: 0, display: 'none' }}
     >
       <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden w-[400px] max-h-[80vh] flex flex-col">
         {/* Header */}

@@ -49,6 +49,7 @@
     "cheerio": "^1.0.0",
     "ogl": "^1.0.11",
     "probe-image-size": "^7.2.3",
+    "qrcode.react": "^4.2.0",
     "supports-color": "^10.2.2",
     "three": "^0.181.2"
   }

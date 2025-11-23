@@ -80,6 +80,7 @@ export const WizardLayout = ({
 
       {/* Ao. Logo - Top Right of App */}
       <motion.div
+        layoutId="ao-logo-container"
         initial={{ opacity: 1, scale: 1 }}
         animate={{ opacity: 1, scale: 1 }}
         className="fixed top-4 right-8 z-50"

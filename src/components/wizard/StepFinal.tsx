@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon, ChevronLeft, ChevronRight, RefreshCw, Heart, MessageCircle, Send, Bookmark, MoreHorizontal, ArrowRight } from "lucide-react";
 import { Instagram } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -13,6 +13,7 @@ import { StepTransitionLoader } from "./StepTransitionLoader";
 import { RotatingLoader } from "@/components/ui/rotating-loader";
 import type { RotatingLoaderItem } from "@/components/ui/rotating-loader";
 import { usePathname } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 
 const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0iI2NjYyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjwvdGV4dD48L3N2Zz4=';
 
@@ -435,6 +436,11 @@ export const StepFinal = () => {
   const [isInstagramModalOpen, setIsInstagramModalOpen] = useState(false);
   const [isPostingToInstagram, setIsPostingToInstagram] = useState(false);
   const [instagramApiResponse, setInstagramApiResponse] = useState<any>(null);
+  const [instagramPostResponses, setInstagramPostResponses] = useState<Array<{
+    id: string;
+    permalink: string;
+    type: 'video' | 'image';
+  }>>([]);
 
   const handleOpenModal = () => {
     setIsInstagramModalOpen(true);
@@ -443,24 +449,122 @@ export const StepFinal = () => {
   };
 
   const executeInstagramUpload = async () => {
-    if (!videoResult) return;
+    if (!videoResult || generatedPosts.length === 0) return;
 
     setIsPostingToInstagram(true);
     setInstagramApiResponse(null);
+    setInstagramPostResponses([]);
+
+    // Helper function to extract caption
+    const extractCaption = (post: GeneratedPost): string => {
+      let caption = post.caption;
+      if (!caption) {
+        caption = post.description || '';
+      }
+      if (typeof caption !== 'string') {
+        caption = String(caption);
+      }
+      if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+        try {
+          const parsed = JSON.parse(caption);
+          caption = parsed.caption || parsed.description || caption;
+        } catch {
+          // Keep original caption if parsing fails
+        }
+      }
+      return typeof caption === 'string' ? caption : String(caption);
+    };
+
+    // Helper function to post and update state immediately
+    const postAndUpdate = async (
+      url: string,
+      caption: string,
+      type: 'video' | 'image',
+      index?: number
+    ): Promise<{ id: string; permalink: string; type: 'video' | 'image' } | null> => {
+      try {
+        // Use /image endpoint for images, /video for video
+        const endpoint = type === 'image' 
+          ? 'https://n8n.llaima.ai/webhook/image'
+          : 'https://n8n.llaima.ai/webhook/video';
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url, caption }),
+        });
+
+        const data = await response.json();
+        if (data.id && data.permalink) {
+          const postResult = {
+            id: data.id,
+            permalink: data.permalink,
+            type,
+          };
+          
+          // Update state immediately when response arrives - this triggers QR code generation
+          setInstagramPostResponses((prev) => {
+            // Check if this post already exists (avoid duplicates)
+            const exists = prev.some(p => p.id === postResult.id);
+            if (exists) return prev;
+            const updated = [...prev, postResult];
+            console.log(`✅ ${type} posted! QR code should appear now. Total: ${updated.length}`);
+            return updated;
+          });
+          
+          return postResult;
+        }
+        return null;
+      } catch (error) {
+        console.error(`Error posting ${type}${index !== undefined ? ` ${index + 1}` : ''}:`, error);
+        return null;
+      }
+    };
 
     try {
-      const response = await fetch('https://n8n.llaima.ai/webhook/video', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: videoResult }),
+      // Create all promises at once - they'll execute in parallel
+      const promises: Promise<{ id: string; permalink: string; type: 'video' | 'image' } | null>[] = [];
+
+      // Add video promise
+      promises.push(
+        postAndUpdate(
+          videoResult,
+          "Descubre el iPhone 17 Pro. Potencia sin límites, diseño sin igual. La innovación en tus manos.",
+          'video'
+        )
+      );
+
+      // Add all image promises
+      generatedPosts.forEach((post, idx) => {
+        if (post.imageUrl) {
+          promises.push(
+            postAndUpdate(
+              post.imageUrl,
+              extractCaption(post),
+              'image',
+              idx
+            )
+          );
+        }
       });
 
-      const data = await response.json();
-      setInstagramApiResponse(data);
+      // Wait for all promises to settle (but they update state individually as they complete)
+      const results = await Promise.allSettled(promises);
+      
+      const successfulPosts = results
+        .map((result) => result.status === 'fulfilled' ? result.value : null)
+        .filter((post): post is { id: string; permalink: string; type: 'video' | 'image' } => post !== null);
+
+      setInstagramApiResponse({
+        success: true,
+        posts: successfulPosts,
+        total: promises.length,
+        completed: successfulPosts.length
+      });
     } catch (error: any) {
-      setInstagramApiResponse({ error: error.message || 'Failed to post video' });
+      setInstagramApiResponse({ error: error.message || 'Failed to post content' });
     } finally {
       setIsPostingToInstagram(false);
     }
@@ -720,136 +824,93 @@ export const StepFinal = () => {
                   </div>
                 </div>
               ) : generatedPosts.length > 0 ? (
-                <div className="relative w-full bg-slate-50/50 group">
-                  <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
-                    <AnimatePresence mode="wait">
+                <div className="p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {generatedPosts.map((post, idx) => (
                       <motion.div
-                        key={generatedPosts[currentSlide]?.imageUrl || currentSlide}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.3 }}
-                        className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
+                        key={idx}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col"
                       >
-                        <div className="w-full max-w-[350px] bg-white rounded-lg overflow-hidden shadow-lg border border-slate-200 flex flex-col">
-                          {generatedPosts[currentSlide]?.imageUrl ? (
-                            <>
-                              <div className="h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100 shrink-0">
-                                {brandLogoUrl && (
-                                  <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
-                                    style={{
-                                      background: brandColors.length > 0
-                                        ? `linear-gradient(135deg, ${brandColors[0] || '#40C9FF'}, ${brandColors[1] || brandColors[0] || '#E81CFF'})`
-                                        : 'linear-gradient(135deg, #40C9FF, #E81CFF)',
-                                      padding: '2px'
-                                    }}
-                                  >
-                                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                                      {brandLogoUrl.trim().startsWith("<svg") ? (
-                                        <div
-                                          className="w-[70%] h-[70%] text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
-                                          dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
-                                        />
-                                      ) : (
-                                        <img
-                                          src={brandLogoUrl}
-                                          alt="Logo"
-                                          className="w-[70%] h-[70%] object-contain"
-                                          referrerPolicy="no-referrer"
-                                        />
-                                      )}
-                                    </div>
-                                  </div>
+                        {/* Mini Header */}
+                        <div className="flex items-center justify-between p-2 border-b border-slate-50">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 overflow-hidden flex-shrink-0"
+                              style={{
+                                background: brandColors.length > 0
+                                  ? `linear-gradient(135deg, ${brandColors[0] || '#40C9FF'}, ${brandColors[1] || brandColors[0] || '#E81CFF'})`
+                                  : 'linear-gradient(135deg, #40C9FF, #E81CFF)',
+                                padding: '1px'
+                              }}
+                            >
+                              <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                                {brandLogoUrl ? (
+                                  brandLogoUrl.trim().startsWith("<svg") ? (
+                                    <div
+                                      className="w-[70%] h-[70%] text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
+                                      dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
+                                    />
+                                  ) : (
+                                    <img
+                                      src={brandLogoUrl}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )
+                                ) : (
+                                  <div className="w-full h-full bg-slate-200" />
                                 )}
-                                <span className="text-sm font-semibold text-slate-900 truncate">
-                                  {brandName || "Marca"}
-                                </span>
                               </div>
-                              <div className="relative w-full aspect-square bg-slate-100">
-                                <img
-                                  key={generatedPosts[currentSlide].imageUrl}
-                                  src={generatedPosts[currentSlide].imageUrl}
-                                  alt={`Generated post ${currentSlide + 1}`}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                  loading="eager"
-                                />
-                              </div>
-                              <div className="bg-white z-20 px-3 flex items-center border-t border-slate-100 h-12 shrink-0">
-                                <div className="flex items-center gap-2 w-full">
-                                  <span className="text-sm font-semibold text-slate-900 shrink-0">
-                                    {brandName || "Marca"}
-                                  </span>
-                                  <p className="text-sm text-slate-600 truncate">
-                                    {(() => {
-                                      let caption = generatedPosts[currentSlide].caption;
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-900 truncate max-w-[80px]">{brandName || "tu_marca"}</span>
+                          </div>
+                          <MoreHorizontal className="w-3 h-3 text-slate-300" />
+                        </div>
 
-                                      if (!caption) {
-                                        return generatedPosts[currentSlide].description || '';
-                                      }
-
-                                      if (typeof caption !== 'string') {
-                                        caption = String(caption);
-                                      }
-
-                                      if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
-                                        try {
-                                          const parsed = JSON.parse(caption);
-                                          caption = parsed.caption || parsed.description || caption;
-                                        } catch {
-                                          caption = caption;
-                                        }
-                                      }
-
-                                      if (typeof caption !== 'string') {
-                                        caption = String(caption);
-                                      }
-
-                                      return caption;
-                                    })()}
-                                  </p>
-                                </div>
-                              </div>
-                            </>
+                        {/* Image */}
+                        <div className="aspect-square w-full bg-slate-100 relative group">
+                          {post.imageUrl ? (
+                            <img src={post.imageUrl} className="w-full h-full object-cover" alt={`Post ${idx + 1}`} />
                           ) : (
-                            <div className="w-full aspect-[4/5] flex items-center justify-center bg-slate-100 text-slate-400">
-                              <ImageIcon className="w-12 h-12 opacity-20" />
+                            <div className="w-full h-full flex items-center justify-center text-slate-300">
+                              <ImageIcon className="w-6 h-6" />
                             </div>
                           )}
                         </div>
-                      </motion.div>
-                    </AnimatePresence>
 
-                    {/* Navigation Controls */}
-                    {generatedPosts.length > 1 && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={prevSlide}
-                        >
-                          <ChevronLeft className="w-5 h-5 text-slate-700" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-sm backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={nextSlide}
-                        >
-                          <ChevronRight className="w-5 h-5 text-slate-700" />
-                        </Button>
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                          {generatedPosts.map((_, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => setCurrentSlide(idx)}
-                              className={`w-2 h-2 rounded-full transition-colors ${idx === currentSlide ? "bg-slate-800" : "bg-slate-300"
-                                }`}
-                            />
-                          ))}
+                        {/* Actions */}
+                        <div className="p-2 flex justify-between items-center">
+                          <div className="flex gap-2">
+                            <Heart className="w-4 h-4 text-slate-800" />
+                            <MessageCircle className="w-4 h-4 text-slate-800" />
+                            <Send className="w-4 h-4 text-slate-800" />
+                          </div>
+                          <Bookmark className="w-4 h-4 text-slate-800" />
                         </div>
-                      </>
-                    )}
+                        
+                        {/* Caption snippet */}
+                        <div className="px-3 pb-4 pt-1 flex-1">
+                          <p className="text-[10px] line-clamp-2 leading-tight text-slate-600">
+                            <span className="font-semibold text-slate-900 mr-1">{brandName || "brand"}</span>
+                            {(() => {
+                              let caption = post.caption;
+                              if (!caption) caption = post.description || '';
+                              if (typeof caption !== 'string') caption = String(caption);
+                              if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+                                try {
+                                  const parsed = JSON.parse(caption);
+                                  caption = parsed.caption || parsed.description || caption;
+                                } catch {}
+                              }
+                              return typeof caption === 'string' ? caption : String(caption);
+                            })()}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -919,58 +980,88 @@ export const StepFinal = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
+            className="flex justify-center"
           >
-            <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
-              style={{
-                boxShadow: '0 20px 40px -10px rgba(139, 92, 246, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
-              }}
-            >
-              <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
-                <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
-                  <div className="flex items-center gap-2">
-                    {isGeneratingVideo ? (
-                      <div className="w-4 h-4 flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
-                      </div>
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shadow-[0_0_0_4px_rgba(34,197,94,0.4),0_4px_12px_rgba(34,197,94,0.5)] ring-2 ring-[#22C55E]/30">
-                        <CheckCircle2 className="w-5 h-5 text-white" fill="currentColor" strokeWidth={2} stroke="#22C55E" />
-                      </div>
-                    )}
-                    <span>{isGeneratingVideo ? "Generando Reel..." : "Video de Campaña"}</span>
-                  </div>
-                  {videoResult && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
-                      <Share2 className="w-3 h-3 text-slate-400" />
-                    </Button>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="relative w-full bg-slate-900 flex items-center justify-center min-h-[400px]">
-                  {isGeneratingVideo ? (
-                    <div className="flex flex-col items-center gap-4 p-8 text-center">
-                      <div className="relative w-16 h-16">
-                        <div className="absolute inset-0 rounded-full border-4 border-purple-500/30"></div>
-                        <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
-                        <Video className="absolute inset-0 m-auto w-6 h-6 text-purple-500" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-white font-medium">Creando tu video</p>
-                        <p className="text-slate-400 text-sm">Esto puede tomar unos minutos...</p>
-                      </div>
+            <div className="w-full max-w-sm mx-auto bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+              {/* Insta Header */}
+              <div className="flex items-center justify-between p-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 p-[2px]">
+                    <div className="w-full h-full rounded-full bg-white p-[2px] overflow-hidden">
+                      {brandLogoUrl ? (
+                        brandLogoUrl.trim().startsWith("<svg") ? (
+                          <div
+                            className="w-full h-full text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current rounded-full"
+                            dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
+                          />
+                        ) : (
+                          <img src={brandLogoUrl} alt="Profile" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
+                        )
+                      ) : (
+                        <div className="w-full h-full bg-slate-200 rounded-full" />
+                      )}
                     </div>
-                  ) : (
-                    <video
-                      src={videoResult!}
-                      controls
-                      className="w-full h-full max-h-[600px] object-contain"
-                      poster={generatedPosts[0]?.imageUrl}
-                    />
-                  )}
+                  </div>
+                  <div className="flex flex-col leading-none">
+                    <span className="text-xs font-semibold text-slate-900">{brandName || "tu_marca"}</span>
+                    <span className="text-[10px] text-slate-500">Original Audio</span>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+                <MoreHorizontal className="w-4 h-4 text-slate-400" />
+              </div>
+              
+              {/* Content */}
+              <div className="aspect-[9/16] w-full bg-slate-900 relative">
+                {isGeneratingVideo ? (
+                  <div className="flex flex-col items-center justify-center gap-6 p-8 text-center w-full h-full">
+                    <RotatingLoader
+                      items={[
+                        { text: "Generando video", icon: Video },
+                        { text: "Creando animaciones", icon: Film },
+                        { text: "Aplicando efectos", icon: Sparkles }
+                      ]}
+                      spinnerSize="lg"
+                      textSize="md"
+                      showSpinner={true}
+                    />
+                  </div>
+                ) : videoResult ? (
+                  <>
+                    <video
+                      src={videoResult}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                    <div className="absolute bottom-4 right-4 flex flex-col gap-4 items-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <Heart className="w-6 h-6 text-white drop-shadow-md" />
+                        <span className="text-xs text-white font-medium drop-shadow-md">4.2k</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <MessageCircle className="w-6 h-6 text-white drop-shadow-md" />
+                        <span className="text-xs text-white font-medium drop-shadow-md">128</span>
+                      </div>
+                      <Send className="w-6 h-6 text-white drop-shadow-md" />
+                      <MoreHorizontal className="w-6 h-6 text-white drop-shadow-md rotate-90" />
+                    </div>
+                  </>
+                ) : null}
+              </div>
+
+              {/* Caption Area */}
+              {videoResult && !isGeneratingVideo && (
+                <div className="p-3 text-xs space-y-1">
+                  <p>
+                    <span className="font-semibold mr-1">{brandName || "tu_marca"}</span>
+                    Descubre el iPhone 17 Pro. Potencia sin límites, diseño sin igual. La innovación en tus manos. #iPhone17Pro #Apple
+                  </p>
+                  <p className="text-slate-400 text-[10px] uppercase">Hace 2 minutos</p>
+                </div>
+              )}
+            </div>
           </motion.div>
         )
       }
@@ -1087,9 +1178,9 @@ export const StepFinal = () => {
                   mass: 0.8
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/5"
+                className="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/5"
               >
-                <div className="bg-white/95 backdrop-blur-xl p-8 flex flex-col gap-6">
+                <div className="bg-white/95 backdrop-blur-xl p-10 flex flex-col gap-8 max-h-[90vh] overflow-y-auto">
                   
                   {/* Header */}
                   <div className="flex items-start justify-between">
@@ -1107,22 +1198,133 @@ export const StepFinal = () => {
                   </div>
 
                   {/* Content */}
-                  <div className="min-h-[200px] flex flex-col justify-center">
+                  <div className="min-h-[200px] flex flex-col justify-start">
                     <AnimatePresence mode="wait">
-                      {isPostingToInstagram ? (
+                      {isPostingToInstagram || instagramPostResponses.length > 0 ? (
                         <motion.div
                           key="loading"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="flex flex-col items-center gap-4 py-4"
+                          className="flex flex-col gap-6 py-4 w-full"
                         >
-                          <div className="relative w-12 h-12">
-                            <Loader2 className="w-12 h-12 text-slate-900 animate-spin" />
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Video Loader */}
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="flex flex-col items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 min-h-[200px] justify-center"
+                            >
+                              {(() => {
+                                const videoPost = instagramPostResponses.find(r => r.type === 'video');
+                                if (videoPost) {
+                                  return (
+                                    <>
+                                      <QRCodeSVG
+                                        value={videoPost.permalink}
+                                        size={120}
+                                        level="H"
+                                        includeMargin={true}
+                                        className="rounded-lg bg-white p-2"
+                                      />
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <Video className="w-4 h-4 text-purple-500" />
+                                        <span className="text-xs font-semibold text-slate-700">Video</span>
+                                      </div>
+                                      <a
+                                        href={videoPost.permalink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium underline mt-1"
+                                      >
+                                        Ver en Instagram
+                                      </a>
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <div className="relative w-10 h-10">
+                                      <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
+                                    </div>
+                                    <RotatingLoader
+                                      items={[
+                                        { text: "Publicando video...", icon: Video }
+                                      ]}
+                                      spinnerSize="sm"
+                                      textSize="sm"
+                                      showSpinner={false}
+                                    />
+                                    <div className="text-xs text-slate-500">
+                                      En proceso...
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </motion.div>
+
+                            {/* Image Loaders */}
+                            {generatedPosts.map((post, idx) => {
+                              const completedImages = instagramPostResponses.filter(r => r.type === 'image');
+                              const imagePost = completedImages[idx];
+                              
+                              return (
+                                <motion.div
+                                  key={idx}
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: idx * 0.1 }}
+                                  className="flex flex-col items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 min-h-[200px] justify-center"
+                                >
+                                  {imagePost ? (
+                                    <>
+                                      <QRCodeSVG
+                                        value={imagePost.permalink}
+                                        size={120}
+                                        level="H"
+                                        includeMargin={true}
+                                        className="rounded-lg bg-white p-2"
+                                      />
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <ImageIcon className="w-4 h-4 text-blue-500" />
+                                        <span className="text-xs font-semibold text-slate-700">Imagen {idx + 1}</span>
+                                      </div>
+                                      <a
+                                        href={imagePost.permalink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium underline mt-1"
+                                      >
+                                        Ver en Instagram
+                                      </a>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="relative w-10 h-10">
+                                        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+                                      </div>
+                                      <RotatingLoader
+                                        items={[
+                                          { text: `Publicando imagen ${idx + 1}...`, icon: ImageIcon }
+                                        ]}
+                                        spinnerSize="sm"
+                                        textSize="sm"
+                                        showSpinner={false}
+                                      />
+                                      <div className="text-xs text-slate-500">
+                                        En proceso...
+                                      </div>
+                                    </>
+                                  )}
+                                </motion.div>
+                              );
+                            })}
                           </div>
-                          <p className="text-slate-500 text-sm font-medium animate-pulse">
-                            Procesando video...
-                          </p>
+                          <div className="text-center pt-2">
+                            <p className="text-slate-600 text-sm font-medium">
+                              Progreso: {instagramPostResponses.length} de 4 publicaciones
+                            </p>
+                          </div>
                         </motion.div>
                       ) : instagramApiResponse ? (
                         <motion.div
@@ -1133,17 +1335,70 @@ export const StepFinal = () => {
                         >
                           <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
                             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                            <span className="font-medium text-sm">Publicación exitosa</span>
+                            <span className="font-medium text-sm">
+                              {instagramPostResponses.length > 0 
+                                ? `${instagramPostResponses.length} publicación${instagramPostResponses.length > 1 ? 'es' : ''} exitosa${instagramPostResponses.length > 1 ? 's' : ''}`
+                                : 'Publicación exitosa'}
+                            </span>
                           </div>
 
-                          <div className="space-y-2">
-                            <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">Respuesta API</span>
-                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-100 overflow-hidden">
-                              <pre className="text-xs text-slate-600 font-mono overflow-auto max-h-[150px]">
-                                {JSON.stringify(instagramApiResponse, null, 2)}
-                              </pre>
+                          {instagramPostResponses.length > 0 ? (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                {instagramPostResponses.map((post, idx) => {
+                                  // Count images separately from video
+                                  const imageIndex = instagramPostResponses
+                                    .slice(0, idx + 1)
+                                    .filter(p => p.type === 'image').length;
+                                  
+                                  return (
+                                    <motion.div
+                                      key={post.id}
+                                      initial={{ opacity: 0, scale: 0.9 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      transition={{ delay: idx * 0.1 }}
+                                      className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border border-slate-200"
+                                    >
+                                      <div className="flex items-center gap-2 mb-1">
+                                        {post.type === 'video' ? (
+                                          <Video className="w-4 h-4 text-purple-500" />
+                                        ) : (
+                                          <ImageIcon className="w-4 h-4 text-blue-500" />
+                                        )}
+                                        <span className="text-xs font-medium text-slate-700">
+                                          {post.type === 'video' ? 'Video' : `Imagen ${imageIndex}`}
+                                        </span>
+                                      </div>
+                                      <QRCodeSVG
+                                        value={post.permalink}
+                                        size={120}
+                                        level="H"
+                                        includeMargin={false}
+                                        className="rounded-lg"
+                                      />
+                                      <a
+                                        href={post.permalink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:text-blue-700 truncate max-w-full px-2"
+                                      >
+                                        Ver en Instagram
+                                      </a>
+                                    </motion.div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">Respuesta API</span>
+                              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100 overflow-hidden">
+                                <pre className="text-xs text-slate-600 font-mono overflow-auto max-h-[150px]">
+                                  {JSON.stringify(instagramApiResponse, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
 
                           <Button
                             onClick={() => setIsInstagramModalOpen(false)}
@@ -1159,34 +1414,160 @@ export const StepFinal = () => {
                            animate={{ opacity: 1 }}
                            className="flex flex-col gap-6"
                         >
-                           <div className="aspect-video w-full bg-slate-100 rounded-lg overflow-hidden relative border border-slate-200">
-                              {generatedPosts[0]?.imageUrl ? (
-                                  <img 
-                                    src={generatedPosts[0].imageUrl} 
-                                    className="w-full h-full object-cover opacity-80" 
-                                    alt="Preview" 
-                                  />
-                              ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                      <Video className="w-12 h-12" />
-                                  </div>
-                              )}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                                  <div className="w-12 h-12 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-lg">
-                                      <Instagram className="w-6 h-6 text-slate-900" />
-                                  </div>
-                              </div>
+                           <div className="space-y-4">
+                             <h4 className="text-lg font-semibold text-slate-900">
+                               Vista previa de contenido a publicar
+                             </h4>
+                             
+                             {/* Video Preview */}
+                             <div className="w-full max-w-sm mx-auto bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-10">
+                               {/* Insta Header */}
+                               <div className="flex items-center justify-between p-3 border-b border-slate-100">
+                                 <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 p-[2px]">
+                                      <div className="w-full h-full rounded-full bg-white p-[2px] overflow-hidden">
+                                        {brandLogoUrl ? (
+                                          <img src={brandLogoUrl} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                                        ) : (
+                                          <div className="w-full h-full bg-slate-200" />
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col leading-none">
+                                      <span className="text-xs font-semibold text-slate-900">{brandName || "tu_marca"}</span>
+                                      <span className="text-[10px] text-slate-500">Original Audio</span>
+                                    </div>
+                                 </div>
+                                 <MoreHorizontal className="w-4 h-4 text-slate-400" />
+                               </div>
+                               
+                               {/* Content */}
+                               <div className="aspect-[9/16] w-full bg-slate-900 relative">
+                                 {videoResult ? (
+                                   <video
+                                     src={videoResult}
+                                     className="w-full h-full object-cover"
+                                     autoPlay
+                                     muted
+                                     loop
+                                     playsInline
+                                   />
+                                 ) : (
+                                   <div className="w-full h-full flex items-center justify-center text-slate-500">
+                                     <Video className="w-8 h-8" />
+                                   </div>
+                                 )}
+                                 <div className="absolute bottom-4 right-4 flex flex-col gap-4 items-center">
+                                    <div className="flex flex-col items-center gap-1">
+                                      <Heart className="w-6 h-6 text-white drop-shadow-md" />
+                                      <span className="text-xs text-white font-medium drop-shadow-md">4.2k</span>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-1">
+                                      <MessageCircle className="w-6 h-6 text-white drop-shadow-md" />
+                                      <span className="text-xs text-white font-medium drop-shadow-md">128</span>
+                                    </div>
+                                    <Send className="w-6 h-6 text-white drop-shadow-md" />
+                                    <MoreHorizontal className="w-6 h-6 text-white drop-shadow-md rotate-90" />
+                                 </div>
+                               </div>
+
+                               {/* Caption Area */}
+                               <div className="p-3 text-xs space-y-1">
+                                  <p>
+                                    <span className="font-semibold mr-1">{brandName || "tu_marca"}</span>
+                                    Descubre el iPhone 17 Pro. Potencia sin límites, diseño sin igual. La innovación en tus manos. #iPhone17Pro #Apple
+                                  </p>
+                                  <p className="text-slate-400 text-[10px] uppercase">Hace 2 minutos</p>
+                               </div>
+                             </div>
+
+                             {/* Images Preview Grid */}
+                             <div className="space-y-6 mt-10">
+                               <div className="flex items-center gap-3 px-1 mb-4">
+                                 <ImageIcon className="w-4 h-4 text-blue-500" />
+                                 <span className="text-sm font-medium text-slate-700">
+                                   Carrusel de Imágenes ({generatedPosts.length})
+                                 </span>
+                               </div>
+                               
+                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                 {generatedPosts.map((post, idx) => (
+                                   <div key={idx} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+                                      {/* Mini Header */}
+                                      <div className="flex items-center justify-between p-2 border-b border-slate-50">
+                                         <div className="flex items-center gap-1.5">
+                                            <div className="w-6 h-6 rounded-full bg-slate-100 overflow-hidden">
+                                              {brandLogoUrl && <img src={brandLogoUrl} alt="" className="w-full h-full object-cover" />}
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-slate-900 truncate max-w-[80px]">{brandName || "tu_marca"}</span>
+                                         </div>
+                                         <MoreHorizontal className="w-3 h-3 text-slate-300" />
+                                      </div>
+
+                                      {/* Image */}
+                                      <div className="aspect-square w-full bg-slate-100 relative group">
+                                         {post.imageUrl ? (
+                                           <img src={post.imageUrl} className="w-full h-full object-cover" alt={`Post ${idx}`} />
+                                         ) : (
+                                           <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                              <ImageIcon className="w-6 h-6" />
+                                           </div>
+                                         )}
+                                      </div>
+
+                                      {/* Actions */}
+                                      <div className="p-2 flex justify-between items-center">
+                                        <div className="flex gap-2">
+                                          <Heart className="w-4 h-4 text-slate-800" />
+                                          <MessageCircle className="w-4 h-4 text-slate-800" />
+                                          <Send className="w-4 h-4 text-slate-800" />
+                                        </div>
+                                        <Bookmark className="w-4 h-4 text-slate-800" />
+                                      </div>
+                                      
+                                      {/* Caption snippet */}
+                                      <div className="px-3 pb-4 pt-1 flex-1">
+                                         <p className="text-[10px] line-clamp-2 leading-tight text-slate-600">
+                                           <span className="font-semibold text-slate-900 mr-1">{brandName || "brand"}</span>
+                                           {(() => {
+                                             let caption = post.caption;
+                                             if (!caption) caption = post.description || '';
+                                             if (typeof caption !== 'string') caption = String(caption);
+                                             if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+                                               try {
+                                                 const parsed = JSON.parse(caption);
+                                                 caption = parsed.caption || parsed.description || caption;
+                                               } catch {}
+                                             }
+                                             return typeof caption === 'string' ? caption : String(caption);
+                                           })()}
+                                         </p>
+                                      </div>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
                            </div>
-                           <p className="text-slate-600 text-sm leading-relaxed">
-                             Se enviará el video generado a la API de publicación. Asegúrate de que el contenido sea correcto.
-                           </p>
                            
-                           <Button
-                            onClick={executeInstagramUpload}
-                            className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-lg h-12 font-medium transition-all"
-                          >
-                            Publicar ahora
-                          </Button>
+                           <div className="pt-8 border-t border-slate-100 mt-4 sticky bottom-0 bg-white/80 backdrop-blur-md pb-4 -mx-8 px-8">
+                             <div className="flex flex-col gap-4">
+                               <p className="text-slate-500 text-sm text-center font-medium">
+                                 Se publicarán <span className="text-slate-900 font-semibold">1 Reel</span> y <span className="text-slate-900 font-semibold">{generatedPosts.length} Posts</span>
+                               </p>
+                               
+                               <Button
+                                 onClick={executeInstagramUpload}
+                                 className="w-full h-16 text-lg font-semibold text-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.2)] transform hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden group bg-slate-900 hover:bg-slate-800 border border-white/10"
+                               >
+                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity duration-500" />
+                                 <div className="flex items-center justify-center gap-3 relative z-10">
+                                   <Instagram className="w-6 h-6 text-pink-400" />
+                                   <span className="tracking-wide">PUBLICAR TODO AHORA</span>
+                                   <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                                 </div>
+                               </Button>
+                             </div>
+                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
