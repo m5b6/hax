@@ -50,7 +50,7 @@ export function Slide01Adsombroso() {
                         transition={{ duration: 0.8, delay: 0.5 }}
                         className="text-[96px] font-bold text-white leading-none mb-8 tracking-tight font-serif"
                     >
-                        ADSOMBROSO!
+                        <span className="font-black">ADS</span>OMBROSO!
                     </motion.h1>
                     <motion.p
                         initial={{ y: 20, opacity: 0 }}
