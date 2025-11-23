@@ -80,14 +80,8 @@ export const WizardLayout = ({
 
       {/* Ao. Logo - Top Right of App */}
       <motion.div
-        initial={{ opacity: 0, scale: 0 }}
+        initial={{ opacity: 1, scale: 1 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ 
-          type: "spring",
-          stiffness: 200,
-          damping: 20,
-          delay: 0.1
-        }}
         className="fixed top-4 right-8 z-50"
       >
         <div className="relative w-12 h-12">

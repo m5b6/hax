@@ -71,7 +71,7 @@ function WizardContent() {
       {showStartup && (
         <StartupAnimation onComplete={() => setShowStartup(false)} />
       )}
-      {!showStartup && (
+      <div style={{ opacity: showStartup ? 0 : 1, transition: 'opacity 0.3s' }}>
         <WizardLayout
           currentStep={step}
           totalSteps={steps.length}
@@ -81,7 +81,7 @@ function WizardContent() {
         >
           {currentStepData.component}
         </WizardLayout>
-      )}
+      </div>
     </>
   );
 }

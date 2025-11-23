@@ -11,12 +11,12 @@ export function StartupAnimation({ onComplete }: StartupAnimationProps) {
   const [stage, setStage] = useState<"adsombroso" | "ao-center" | "ao-moving" | "complete">("adsombroso");
 
   useEffect(() => {
-    const timer1 = setTimeout(() => setStage("ao-center"), 1500);
-    const timer2 = setTimeout(() => setStage("ao-moving"), 2500);
+    const timer1 = setTimeout(() => setStage("ao-center"), 1200);
+    const timer2 = setTimeout(() => setStage("ao-moving"), 2200);
     const timer3 = setTimeout(() => {
       setStage("complete");
-      setTimeout(() => onComplete(), 500);
-    }, 4000);
+      setTimeout(() => onComplete(), 100);
+    }, 3400);
 
     return () => {
       clearTimeout(timer1);
@@ -24,6 +24,31 @@ export function StartupAnimation({ onComplete }: StartupAnimationProps) {
       clearTimeout(timer3);
     };
   }, [onComplete]);
+
+  const logoContent = (
+    <div className="relative w-12 h-12">
+      <motion.div
+        className="absolute -inset-1 rounded-full"
+        style={{
+          background: "conic-gradient(from 0deg, #40C9FF, #E81CFF, #FF9F0A, #FFD60A, #40C9FF)",
+        }}
+        animate={{ rotate: 360 }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      />
+      <div className="relative w-full h-full rounded-full bg-black/80 backdrop-blur-md flex items-center justify-center">
+        <span 
+          className="text-white text-xl font-normal"
+          style={{ fontFamily: 'var(--font-instrument-serif), serif' }}
+        >
+          Ao.
+        </span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[100] bg-black overflow-hidden">
@@ -49,41 +74,22 @@ export function StartupAnimation({ onComplete }: StartupAnimationProps) {
         {stage === "ao-center" && (
           <motion.div
             key="ao-center"
+            layoutId="ao-logo"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="relative w-12 h-12">
-              <motion.div
-                className="absolute -inset-1 rounded-full"
-                style={{
-                  background: "conic-gradient(from 0deg, #40C9FF, #E81CFF, #FF9F0A, #FFD60A, #40C9FF)",
-                }}
-                animate={{ rotate: 360 }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-              />
-              <div className="relative w-full h-full rounded-full bg-black/80 backdrop-blur-md flex items-center justify-center">
-                <span 
-                  className="text-white text-xl font-normal"
-                  style={{ fontFamily: 'var(--font-instrument-serif), serif' }}
-                >
-                  Ao.
-                </span>
-              </div>
-            </div>
+            {logoContent}
           </motion.div>
         )}
 
         {(stage === "ao-moving" || stage === "complete") && (
           <motion.div
             key="ao-moving"
-            className="fixed top-4 right-8 z-[101]"
+            layoutId="ao-logo"
+            className="fixed z-[101]"
             initial={{ 
               top: "50%",
               left: "50%",
@@ -93,36 +99,16 @@ export function StartupAnimation({ onComplete }: StartupAnimationProps) {
             animate={{
               top: "1rem",
               right: "2rem",
+              left: "auto",
               x: 0,
               y: 0,
             }}
             transition={{
-              duration: 1.0,
+              duration: 1.2,
               ease: [0.16, 1, 0.3, 1],
             }}
           >
-            <div className="relative w-12 h-12">
-              <motion.div
-                className="absolute -inset-1 rounded-full"
-                style={{
-                  background: "conic-gradient(from 0deg, #40C9FF, #E81CFF, #FF9F0A, #FFD60A, #40C9FF)",
-                }}
-                animate={{ rotate: 360 }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-              />
-              <div className="relative w-full h-full rounded-full bg-black/80 backdrop-blur-md flex items-center justify-center">
-                <span 
-                  className="text-white text-xl font-normal"
-                  style={{ fontFamily: 'var(--font-instrument-serif), serif' }}
-                >
-                  Ao.
-                </span>
-              </div>
-            </div>
+            {logoContent}
           </motion.div>
         )}
       </AnimatePresence>

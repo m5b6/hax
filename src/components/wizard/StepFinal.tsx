@@ -360,7 +360,7 @@ export const StepFinal = () => {
 
     const generateVideo = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 6000));
 
         const mockVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
@@ -436,8 +436,8 @@ export const StepFinal = () => {
                   </>
                 ) : (
                   <>
-                    <div className="w-5 h-5 rounded-full bg-[#30D158] flex items-center justify-center shadow-[0_0_0_3px_rgba(48,209,88,0.3),0_2px_8px_rgba(48,209,88,0.4)] ring-2 ring-[#30D158]/20">
-                      <CheckCircle2 className="w-4 h-4 text-white" fill="currentColor" strokeWidth={0} />
+                    <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shadow-[0_0_0_4px_rgba(34,197,94,0.4),0_4px_12px_rgba(34,197,94,0.5)] ring-2 ring-[#22C55E]/30">
+                      <CheckCircle2 className="w-5 h-5 text-white" fill="currentColor" strokeWidth={2} stroke="#22C55E" />
                     </div>
                     <FileText className="w-4 h-4 text-slate-500" />
                     <span>Guía Visual</span>
@@ -589,8 +589,8 @@ export const StepFinal = () => {
                     </>
                   ) : (
                     <>
-                      <div className="w-5 h-5 rounded-full bg-[#30D158] flex items-center justify-center shadow-[0_0_0_3px_rgba(48,209,88,0.3),0_2px_8px_rgba(48,209,88,0.4)] ring-2 ring-[#30D158]/20">
-                        <CheckCircle2 className="w-4 h-4 text-white" fill="currentColor" strokeWidth={0} />
+                      <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shadow-[0_0_0_4px_rgba(34,197,94,0.4),0_4px_12px_rgba(34,197,94,0.5)] ring-2 ring-[#22C55E]/30">
+                        <CheckCircle2 className="w-5 h-5 text-white" fill="currentColor" strokeWidth={2} stroke="#22C55E" />
                       </div>
                       <ImageIcon className="w-4 h-4 text-slate-500" />
                       <span>Contenido Generado</span>
@@ -669,7 +669,7 @@ export const StepFinal = () => {
                   <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
                     <AnimatePresence mode="wait">
                       <motion.div
-                        key={currentSlide}
+                        key={generatedPosts[currentSlide]?.imageUrl || currentSlide}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
@@ -677,7 +677,7 @@ export const StepFinal = () => {
                         className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
                       >
                         <div className="w-full max-w-[350px] bg-white rounded-lg overflow-hidden shadow-lg border border-slate-200 flex flex-col">
-                          {generatedPosts[currentSlide].imageUrl ? (
+                          {generatedPosts[currentSlide]?.imageUrl ? (
                             <>
                               <div className="h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100 shrink-0">
                                 {brandLogoUrl && (
@@ -712,9 +712,11 @@ export const StepFinal = () => {
                               </div>
                               <div className="relative w-full aspect-square bg-slate-100">
                                 <img
+                                  key={generatedPosts[currentSlide].imageUrl}
                                   src={generatedPosts[currentSlide].imageUrl}
                                   alt={`Generated post ${currentSlide + 1}`}
                                   className="absolute inset-0 w-full h-full object-cover"
+                                  loading="eager"
                                 />
                               </div>
                               <div className="bg-white z-20 px-3 flex items-center border-t border-slate-100 h-12 shrink-0">
@@ -876,8 +878,8 @@ export const StepFinal = () => {
                         <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
                       </div>
                     ) : (
-                      <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center shadow-[0_0_0_2px_rgba(48,209,88,0.2),0_2px_4px_rgba(48,209,88,0.3)]">
-                        <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                      <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shadow-[0_0_0_4px_rgba(34,197,94,0.4),0_4px_12px_rgba(34,197,94,0.5)] ring-2 ring-[#22C55E]/30">
+                        <CheckCircle2 className="w-5 h-5 text-white" fill="currentColor" strokeWidth={2} stroke="#22C55E" />
                       </div>
                     )}
                     <span>{isGeneratingVideo ? "Generando Reel..." : "Video de Campaña"}</span>
