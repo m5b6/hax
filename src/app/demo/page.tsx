@@ -13,6 +13,7 @@ import { Slide02BigProblem } from "@/components/slides/Slide02BigProblem";
 import { Slide03MoreProblems } from "@/components/slides/Slide03MoreProblems";
 import { Slide04UniversalProblem } from "@/components/slides/Slide04UniversalProblem";
 import { Slide05WhyMeta } from "@/components/slides/Slide05WhyMeta";
+import { Slide06Adsombroso } from "@/components/slides/Slide06Adsombroso";
 
 function WizardContent() {
     const searchParams = useSearchParams();
@@ -93,7 +94,10 @@ function WizardContent() {
             id: "slide-05-why-meta",
             component: <Slide05WhyMeta />,
         },
-        // More slides will be added here
+        {
+            id: "slide-06-adsombroso",
+            component: <Slide06Adsombroso />,
+        },
     ];
 
     // Show slides first, then wizard
