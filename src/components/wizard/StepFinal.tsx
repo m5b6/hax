@@ -19,7 +19,7 @@ const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWl
 
 const DEMO_IMAGE_URLS = [
   "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_Este_p_ster_presenta_una_ilustraci_n_112325.png",
-  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_cohesive_hero_illustration_capturing_112325+(1).png",
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_La_taza__con_el_asa_112325.png",
   "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_vibrant_and_diverse_group_112325.png",
 ];
 const DEMO_VIDEO_URL = "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Cinematic_8_second_9_16_vertical_video__Minimal_collage_style__light_blue_textured_background__Buk_b.mp4";
