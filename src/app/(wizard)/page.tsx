@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { WizardLayout } from "@/components/wizard/WizardLayout";
 import { StepIdentity } from "@/components/wizard/StepIdentity";
@@ -14,6 +15,7 @@ function WizardContent() {
   const initialStep = parseInt(searchParams.get("step") || "0");
   const [step, setStep] = useState(initialStep);
   const [showStartup, setShowStartup] = useState(true);
+  const [showMainSurface, setShowMainSurface] = useState(false);
   const wizardStore = useWizardStore();
   
   // Update step if URL param changes
@@ -69,9 +71,16 @@ function WizardContent() {
   return (
     <>
       {showStartup && (
-        <StartupAnimation onComplete={() => setShowStartup(false)} />
+        <StartupAnimation 
+          onComplete={() => setShowStartup(false)} 
+          onStartMoving={() => setShowMainSurface(true)}
+        />
       )}
-      <div style={{ opacity: showStartup ? 0 : 1, transition: 'opacity 0.3s' }}>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showMainSurface ? 1 : 0 }}
+        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+      >
         <WizardLayout
           currentStep={step}
           totalSteps={steps.length}
@@ -81,7 +90,7 @@ function WizardContent() {
         >
           {currentStepData.component}
         </WizardLayout>
-      </div>
+      </motion.div>
     </>
   );
 }

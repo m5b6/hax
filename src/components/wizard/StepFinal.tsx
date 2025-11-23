@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Sparkles, Copy, Share2, Target, Palette, Film, Users, Video, FileText, Loader2, ArrowDown, Image as ImageIcon, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
@@ -435,10 +436,15 @@ export const StepFinal = () => {
   const [isPostingToInstagram, setIsPostingToInstagram] = useState(false);
   const [instagramApiResponse, setInstagramApiResponse] = useState<any>(null);
 
-  const handleInstagramUpload = async () => {
+  const handleOpenModal = () => {
+    setIsInstagramModalOpen(true);
+    setInstagramApiResponse(null);
+    setIsPostingToInstagram(false);
+  };
+
+  const executeInstagramUpload = async () => {
     if (!videoResult) return;
 
-    setIsInstagramModalOpen(true);
     setIsPostingToInstagram(true);
     setInstagramApiResponse(null);
 
@@ -1033,7 +1039,7 @@ export const StepFinal = () => {
             >
               <CardContent className="p-6">
                 <Button
-                  onClick={handleInstagramUpload}
+                  onClick={handleOpenModal}
                   className="w-full px-8 py-6 text-base font-medium text-white rounded-full flex items-center justify-center gap-2"
                   style={{
                     background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
@@ -1049,95 +1055,149 @@ export const StepFinal = () => {
         )
       }
 
-      {/* Instagram Modal */}
-      <AnimatePresence>
-        {isInstagramModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            onClick={() => !isPostingToInstagram && setIsInstagramModalOpen(false)}
-          >
+      {/* Instagram Modal - App Style (Portalled) */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isInstagramModalOpen && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ type: "spring", duration: 0.4 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ type: "spring", duration: 0.4 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative z-10 w-full max-w-lg"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
             >
-              <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
-                style={{
-                  boxShadow: '0 20px 40px -10px rgba(188, 24, 136, 0.3), 0 0 0 1px rgba(188, 24, 136, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                onClick={() => !isPostingToInstagram && setIsInstagramModalOpen(false)}
+              />
+
+              {/* Modal Content */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{
+                  type: "spring",
+                  damping: 25,
+                  stiffness: 300,
+                  mass: 0.8
                 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/5"
               >
-                <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
-                  <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
-                    <div className="flex items-center gap-2">
-                      <Instagram className="w-4 h-4 text-slate-500" />
-                      <span>Subir a Instagram</span>
-                    </div>
+                <div className="bg-white/95 backdrop-blur-xl p-8 flex flex-col gap-6">
+                  
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <h3 className="font-serif text-3xl text-slate-900 leading-tight">
+                      Publicar en<br />Instagram
+                    </h3>
                     {!isPostingToInstagram && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                      <button
                         onClick={() => setIsInstagramModalOpen(false)}
-                        className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
                       >
-                        <span className="text-lg">×</span>
-                      </Button>
+                        <span className="text-xl leading-none mb-1">&times;</span>
+                      </button>
                     )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {isPostingToInstagram ? (
-                    <div className="flex flex-col items-center gap-4 py-8">
-                      <div className="relative w-16 h-16">
-                        <div className="absolute inset-0 rounded-full border-4 border-pink-500/30"></div>
-                        <div className="absolute inset-0 rounded-full border-4 border-t-pink-500 animate-spin"></div>
-                        <Instagram className="absolute inset-0 m-auto w-6 h-6 text-pink-500" />
-                      </div>
-                      <div className="space-y-1 text-center">
-                        <p className="text-slate-900 font-medium">Subiendo video...</p>
-                        <p className="text-slate-400 text-sm">Procesando tu contenido</p>
-                      </div>
-                    </div>
-                  ) : instagramApiResponse ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/20 mx-auto">
-                        <CheckCircle2 className="w-6 h-6 text-green-500" />
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-center font-medium text-slate-900">Respuesta del servidor</h3>
-                        <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50/50 p-4 rounded-lg border border-slate-100 overflow-auto max-h-[300px]">
-                          {JSON.stringify(instagramApiResponse, null, 2)}
-                        </pre>
-                      </div>
-                      <Button
-                        onClick={() => setIsInstagramModalOpen(false)}
-                        className="w-full"
-                        style={{
-                          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-                        }}
-                      >
-                        Cerrar
-                      </Button>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
+                  </div>
+
+                  {/* Content */}
+                  <div className="min-h-[200px] flex flex-col justify-center">
+                    <AnimatePresence mode="wait">
+                      {isPostingToInstagram ? (
+                        <motion.div
+                          key="loading"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex flex-col items-center gap-4 py-4"
+                        >
+                          <div className="relative w-12 h-12">
+                            <Loader2 className="w-12 h-12 text-slate-900 animate-spin" />
+                          </div>
+                          <p className="text-slate-500 text-sm font-medium animate-pulse">
+                            Procesando video...
+                          </p>
+                        </motion.div>
+                      ) : instagramApiResponse ? (
+                        <motion.div
+                          key="success"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex flex-col gap-6"
+                        >
+                          <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                            <span className="font-medium text-sm">Publicación exitosa</span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">Respuesta API</span>
+                            <div className="bg-slate-50 rounded-lg p-4 border border-slate-100 overflow-hidden">
+                              <pre className="text-xs text-slate-600 font-mono overflow-auto max-h-[150px]">
+                                {JSON.stringify(instagramApiResponse, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+
+                          <Button
+                            onClick={() => setIsInstagramModalOpen(false)}
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-lg h-12 font-medium transition-all"
+                          >
+                            Cerrar
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                           key="confirm"
+                           initial={{ opacity: 0 }}
+                           animate={{ opacity: 1 }}
+                           className="flex flex-col gap-6"
+                        >
+                           <div className="aspect-video w-full bg-slate-100 rounded-lg overflow-hidden relative border border-slate-200">
+                              {generatedPosts[0]?.imageUrl ? (
+                                  <img 
+                                    src={generatedPosts[0].imageUrl} 
+                                    className="w-full h-full object-cover opacity-80" 
+                                    alt="Preview" 
+                                  />
+                              ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                      <Video className="w-12 h-12" />
+                                  </div>
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                  <div className="w-12 h-12 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-lg">
+                                      <Instagram className="w-6 h-6 text-slate-900" />
+                                  </div>
+                              </div>
+                           </div>
+                           <p className="text-slate-600 text-sm leading-relaxed">
+                             Se enviará el video generado a la API de publicación. Asegúrate de que el contenido sea correcto.
+                           </p>
+                           
+                           <Button
+                            onClick={executeInstagramUpload}
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-lg h-12 font-medium transition-all"
+                          >
+                            Publicar ahora
+                          </Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div >
   );
 };
