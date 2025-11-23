@@ -127,6 +127,8 @@ export const StepFinal = () => {
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
   const hasGeneratedPostsRef = useRef(false);
   const [postGenerationError, setPostGenerationError] = useState<string | null>(null);
+  const [showGeneratingText, setShowGeneratingText] = useState(true);
+  const [generationCounter, setGenerationCounter] = useState(0);
 
   useEffect(() => {
     // Only generate once when component mounts
@@ -254,6 +256,8 @@ export const StepFinal = () => {
     setPostGenerationError(null);
     setGeneratedPosts([]);
     setCurrentSlide(0);
+    setShowGeneratingText(true);
+    setGenerationCounter(0);
 
     const wizardData = {
       inputs: wizardStore.getAllInputs(),
@@ -288,8 +292,31 @@ export const StepFinal = () => {
       setPostGenerationError(error.message);
     } finally {
       setIsGeneratingPosts(false);
+      setShowGeneratingText(true);
+      setGenerationCounter(0);
     }
   };
+
+  useEffect(() => {
+    if (!isGeneratingPosts) {
+      setShowGeneratingText(true);
+      setGenerationCounter(0);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setShowGeneratingText(false);
+    }, 100);
+
+    const interval = setInterval(() => {
+      setGenerationCounter(prev => prev + 1);
+    }, 10);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [isGeneratingPosts]);
 
   useEffect(() => {
     if (hasGeneratedPostsRef.current) return;
@@ -354,6 +381,36 @@ export const StepFinal = () => {
   const nextSlide = () => setCurrentSlide(prev => (prev + 1) % generatedPosts.length);
   const prevSlide = () => setCurrentSlide(prev => (prev - 1 + generatedPosts.length) % generatedPosts.length);
 
+  // Instagram modal state
+  const [isInstagramModalOpen, setIsInstagramModalOpen] = useState(false);
+  const [isPostingToInstagram, setIsPostingToInstagram] = useState(false);
+  const [instagramApiResponse, setInstagramApiResponse] = useState<any>(null);
+
+  const handleInstagramUpload = async () => {
+    if (!videoResult) return;
+
+    setIsInstagramModalOpen(true);
+    setIsPostingToInstagram(true);
+    setInstagramApiResponse(null);
+
+    try {
+      const response = await fetch('https://n8n.llaima.ai/webhook/video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: videoResult }),
+      });
+
+      const data = await response.json();
+      setInstagramApiResponse(data);
+    } catch (error: any) {
+      setInstagramApiResponse({ error: error.message || 'Failed to post video' });
+    } finally {
+      setIsPostingToInstagram(false);
+    }
+  };
+
   return (
     <div className="flex flex-col">
       {/* Video Prompt Card - Always show, even before streaming starts */}
@@ -362,14 +419,14 @@ export const StepFinal = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <Card className="border-none overflow-hidden rounded-xl bg-white relative transition-shadow duration-700"
+        <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative transition-shadow duration-700"
           style={{
             boxShadow: displayPrompt
-              ? '0 10px 30px -5px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)'
-              : '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
+              ? '0 20px 40px -10px rgba(59, 130, 246, 0.2), 0 0 0 1px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
+              : '0 8px 24px -4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
           }}
         >
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+          <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2 text-slate-900 font-medium">
                 {isGenerating ? (
@@ -379,8 +436,8 @@ export const StepFinal = () => {
                   </>
                 ) : (
                   <>
-                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
-                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                    <div className="w-5 h-5 rounded-full bg-[#30D158] flex items-center justify-center shadow-[0_0_0_3px_rgba(48,209,88,0.3),0_2px_8px_rgba(48,209,88,0.4)] ring-2 ring-[#30D158]/20">
+                      <CheckCircle2 className="w-4 h-4 text-white" fill="currentColor" strokeWidth={0} />
                     </div>
                     <FileText className="w-4 h-4 text-slate-500" />
                     <span>Guía Visual</span>
@@ -466,7 +523,7 @@ export const StepFinal = () => {
           transition={{ duration: 0.5 }}
           className="flex justify-center relative z-0"
         >
-          <div className="relative flex flex-col items-center h-16">
+          <div className="relative flex flex-col items-center h-10">
             {/* The Beam */}
             <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
               <motion.div
@@ -512,22 +569,38 @@ export const StepFinal = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
+          <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
             style={{
-              boxShadow: '0 -10px 30px -5px rgba(236, 72, 153, 0.15), 0 0 0 1px rgba(236, 72, 153, 0.1)'
+              boxShadow: '0 20px 40px -10px rgba(236, 72, 153, 0.2), 0 0 0 1px rgba(236, 72, 153, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
             }}
           >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+            <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
               <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
                 <div className="flex items-center gap-2">
                   {isGeneratingPosts ? (
-                    <Sparkles className="w-4 h-4 text-slate-500" />
+                    <>
+                      <Sparkles className="w-4 h-4 text-slate-500" />
+                      <span>Contenido Generado</span>
+                      {showGeneratingText ? (
+                        <span className="text-xs text-slate-400 font-normal">Generando...</span>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-normal">({(generationCounter / 100).toFixed(2)}s)</span>
+                      )}
+                    </>
                   ) : (
-                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
-                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
-                    </div>
+                    <>
+                      <div className="w-5 h-5 rounded-full bg-[#30D158] flex items-center justify-center shadow-[0_0_0_3px_rgba(48,209,88,0.3),0_2px_8px_rgba(48,209,88,0.4)] ring-2 ring-[#30D158]/20">
+                        <CheckCircle2 className="w-4 h-4 text-white" fill="currentColor" strokeWidth={0} />
+                      </div>
+                      <ImageIcon className="w-4 h-4 text-slate-500" />
+                      <span>Contenido Generado</span>
+                      {generatedPosts.length > 0 && (
+                        <span className="text-xs text-slate-400 font-normal">
+                          ({generatedPosts.length} {generatedPosts.length === 1 ? 'publicación' : 'publicaciones'})
+                        </span>
+                      )}
+                    </>
                   )}
-                  <span>Contenido Generado</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {!isGeneratingPosts && generatedPosts.length > 0 && (
@@ -551,7 +624,7 @@ export const StepFinal = () => {
             <CardContent className="p-0">
               {isGeneratingPosts ? (
                 <div className="relative w-full bg-slate-50/50 group">
-                  <div className="overflow-hidden relative h-[500px] w-full">
+                  <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
                     <motion.div
                       className="flex gap-6 px-6"
                       animate={{
@@ -581,7 +654,7 @@ export const StepFinal = () => {
                           <div className="relative aspect-square w-full bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 animate-pulse">
                             <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/30 to-transparent" />
                           </div>
-                          <div className="w-full space-y-2 px-4 pb-4">
+                          <div className="w-full space-y-2 mt-2 px-4 pb-4">
                             <div className="h-3 bg-slate-200 rounded-full animate-pulse" />
                             <div className="h-3 bg-slate-200 rounded-full animate-pulse w-4/5" />
                             <div className="h-3 bg-slate-200 rounded-full animate-pulse w-3/5" />
@@ -742,7 +815,7 @@ export const StepFinal = () => {
             transition={{ duration: 0.5 }}
             className="flex justify-center relative z-0"
           >
-            <div className="relative flex flex-col items-center h-16">
+            <div className="relative flex flex-col items-center h-10">
               {/* The Beam */}
               <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
                 <motion.div
@@ -790,12 +863,12 @@ export const StepFinal = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
           >
-            <Card className="border-none overflow-hidden rounded-xl bg-white relative"
+            <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
               style={{
-                boxShadow: '0 10px 30px -5px rgba(139, 92, 246, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1)'
+                boxShadow: '0 20px 40px -10px rgba(139, 92, 246, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
               }}
             >
-              <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+              <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
                 <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
                   <div className="flex items-center gap-2">
                     {isGeneratingVideo ? (
@@ -803,7 +876,7 @@ export const StepFinal = () => {
                         <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
                       </div>
                     ) : (
-                      <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center shadow-[0_0_0_2px_rgba(48,209,88,0.2),0_2px_4px_rgba(48,209,88,0.3)]">
                         <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
                       </div>
                     )}
@@ -854,7 +927,7 @@ export const StepFinal = () => {
             transition={{ duration: 0.5 }}
             className="flex justify-center relative z-0"
           >
-            <div className="relative flex flex-col items-center h-16">
+            <div className="relative flex flex-col items-center h-10">
               {/* The Beam */}
               <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
                 <motion.div
@@ -902,16 +975,14 @@ export const StepFinal = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
           >
-            <Card className="border-none overflow-hidden rounded-xl bg-white relative"
+            <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
               style={{
-                boxShadow: '0 10px 30px -5px rgba(64, 201, 255, 0.2), 0 0 0 1px rgba(64, 201, 255, 0.1)'
+                boxShadow: '0 20px 40px -10px rgba(64, 201, 255, 0.25), 0 0 0 1px rgba(64, 201, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
               }}
             >
               <CardContent className="p-6">
                 <Button
-                  onClick={() => {
-                    window.open('https://www.instagram.com/create/select/', '_blank');
-                  }}
+                  onClick={handleInstagramUpload}
                   className="w-full px-8 py-6 text-base font-medium text-white rounded-full flex items-center justify-center gap-2"
                   style={{
                     background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
@@ -926,6 +997,96 @@ export const StepFinal = () => {
           </motion.div>
         )
       }
+
+      {/* Instagram Modal */}
+      <AnimatePresence>
+        {isInstagramModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => !isPostingToInstagram && setIsInstagramModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative z-10 w-full max-w-lg"
+            >
+              <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
+                style={{
+                  boxShadow: '0 20px 40px -10px rgba(188, 24, 136, 0.3), 0 0 0 1px rgba(188, 24, 136, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
+                }}
+              >
+                <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
+                  <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
+                    <div className="flex items-center gap-2">
+                      <Instagram className="w-4 h-4 text-slate-500" />
+                      <span>Subir a Instagram</span>
+                    </div>
+                    {!isPostingToInstagram && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsInstagramModalOpen(false)}
+                        className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                      >
+                        <span className="text-lg">×</span>
+                      </Button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {isPostingToInstagram ? (
+                    <div className="flex flex-col items-center gap-4 py-8">
+                      <div className="relative w-16 h-16">
+                        <div className="absolute inset-0 rounded-full border-4 border-pink-500/30"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-t-pink-500 animate-spin"></div>
+                        <Instagram className="absolute inset-0 m-auto w-6 h-6 text-pink-500" />
+                      </div>
+                      <div className="space-y-1 text-center">
+                        <p className="text-slate-900 font-medium">Subiendo video...</p>
+                        <p className="text-slate-400 text-sm">Procesando tu contenido</p>
+                      </div>
+                    </div>
+                  ) : instagramApiResponse ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/20 mx-auto">
+                        <CheckCircle2 className="w-6 h-6 text-green-500" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-center font-medium text-slate-900">Respuesta del servidor</h3>
+                        <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50/50 p-4 rounded-lg border border-slate-100 overflow-auto max-h-[300px]">
+                          {JSON.stringify(instagramApiResponse, null, 2)}
+                        </pre>
+                      </div>
+                      <Button
+                        onClick={() => setIsInstagramModalOpen(false)}
+                        className="w-full"
+                        style={{
+                          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                        }}
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div >
   );
 };

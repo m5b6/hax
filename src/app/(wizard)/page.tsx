@@ -7,11 +7,13 @@ import { StepIdentity } from "@/components/wizard/StepIdentity";
 import { StepStrategy } from "@/components/wizard/StepStrategy";
 import { StepFinal } from "@/components/wizard/StepFinal";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { StartupAnimation } from "@/components/StartupAnimation";
 
 function WizardContent() {
   const searchParams = useSearchParams();
   const initialStep = parseInt(searchParams.get("step") || "0");
   const [step, setStep] = useState(initialStep);
+  const [showStartup, setShowStartup] = useState(true);
   const wizardStore = useWizardStore();
   
   // Update step if URL param changes
@@ -65,15 +67,22 @@ function WizardContent() {
   const currentStepData = steps[step] || steps[0];
 
   return (
-    <WizardLayout
-      currentStep={step}
-      totalSteps={steps.length}
-      title={getStepTitle(step)}
-      subtitle={currentStepData.subtitle}
-      isAnalyzing={isAnalyzing}
-    >
-      {currentStepData.component}
-    </WizardLayout>
+    <>
+      {showStartup && (
+        <StartupAnimation onComplete={() => setShowStartup(false)} />
+      )}
+      {!showStartup && (
+        <WizardLayout
+          currentStep={step}
+          totalSteps={steps.length}
+          title={getStepTitle(step)}
+          subtitle={currentStepData.subtitle}
+          isAnalyzing={isAnalyzing}
+        >
+          {currentStepData.component}
+        </WizardLayout>
+      )}
+    </>
   );
 }
 
