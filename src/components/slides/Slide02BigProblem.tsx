@@ -17,91 +17,91 @@ export function Slide02BigProblem() {
                 <AoLogo size={100} animate={true} />
             </motion.div>
 
-            <div className="w-full max-w-7xl mx-auto text-center">
+            <div className="w-full max-w-7xl">
                 {/* Title */}
                 <motion.h1
                     initial={{ y: -30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="text-[56px] font-bold text-white leading-none mb-20 tracking-tight font-serif"
+                    className="text-[56px] font-bold text-white leading-none mb-12 tracking-tight font-serif text-center"
                 >
                     Big Problem
                 </motion.h1>
 
-                {/* Stats Grid - Full Width Centered */}
-                <div className="space-y-16">
-                    {/* Mercado Row */}
+                {/* Three Columns Grid */}
+                <div className="grid grid-cols-3 gap-16">
+                    {/* Column 1 - Mercado */}
                     <motion.div
-                        initial={{ y: 30, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
+                        initial={{ x: -50, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                        className="space-y-6"
+                        className="flex flex-col items-center text-center space-y-8"
                     >
-                        <span className="text-white/50 text-2xl font-normal font-serif block">Mercado de Publicidad Digital</span>
-                        <div className="flex items-baseline justify-center gap-20">
+                        <span className="text-white/50 text-2xl font-normal font-serif">Mercado de Publicidad Digital</span>
+                        <div className="space-y-8 w-full">
                             <div className="flex flex-col items-center gap-2">
                                 <span className="text-white/30 text-sm font-normal">Gasto Global</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-white/60 text-2xl font-normal">$</span>
-                                    <span className="text-white text-6xl font-bold font-serif">1</span>
-                                    <span className="text-white text-3xl font-bold font-serif">TN</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-white/60 text-3xl font-normal">$</span>
+                                    <span className="text-white text-8xl font-bold font-serif">1</span>
+                                    <span className="text-white text-4xl font-bold font-serif">TN</span>
                                 </div>
                             </div>
                             <div className="flex flex-col items-center gap-2">
                                 <span className="text-white/30 text-sm font-normal">DPP</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-white/60 text-2xl font-normal">$</span>
-                                    <span className="text-white text-6xl font-bold font-serif">750</span>
-                                    <span className="text-white text-3xl font-bold font-serif">BN</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-white/60 text-3xl font-normal">$</span>
+                                    <span className="text-white text-8xl font-bold font-serif">750</span>
+                                    <span className="text-white text-4xl font-bold font-serif">BN</span>
                                 </div>
                             </div>
                             <div className="flex flex-col items-center gap-2">
                                 <span className="text-white/30 text-sm font-normal">Meta</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-white/60 text-2xl font-normal">$</span>
-                                    <span className="text-white text-6xl font-bold font-serif">164</span>
-                                    <span className="text-white text-3xl font-bold font-serif">BN</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-white/60 text-3xl font-normal">$</span>
+                                    <span className="text-white text-8xl font-bold font-serif">164</span>
+                                    <span className="text-white text-4xl font-bold font-serif">BN</span>
                                 </div>
                             </div>
                         </div>
                     </motion.div>
 
-                    {/* Agencias Row */}
+                    {/* Column 2 - Agencias */}
                     <motion.div
-                        initial={{ y: 30, opacity: 0 }}
+                        initial={{ y: 50, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
-                        className="space-y-6"
+                        className="flex flex-col items-center justify-center text-center space-y-8"
                     >
-                        <span className="text-white/50 text-2xl font-normal font-serif block">Agencias e Influencers</span>
+                        <span className="text-white/50 text-2xl font-normal font-serif">Agencias e Influencers</span>
                         <div className="flex items-baseline justify-center gap-3">
-                            <span className="text-white/60 text-2xl font-normal">$</span>
-                            <span className="text-white text-7xl font-bold font-serif">84</span>
-                            <span className="text-white text-3xl font-bold font-serif">BN</span>
-                            <span className="text-white/40 text-2xl font-normal ml-2">(TAM)</span>
+                            <span className="text-white/60 text-4xl font-normal">$</span>
+                            <span className="text-white text-9xl font-bold font-serif">84</span>
+                            <span className="text-white text-5xl font-bold font-serif">BN</span>
                         </div>
+                        <span className="text-white/40 text-2xl font-normal">(TAM)</span>
                     </motion.div>
 
-                    {/* Non Working Media Row */}
+                    {/* Column 3 - Non Working Media */}
                     <motion.div
-                        initial={{ y: 30, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
+                        initial={{ x: 50, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.9, ease: "easeOut" }}
-                        className="space-y-6"
+                        className="flex flex-col items-center text-center space-y-8"
                     >
-                        <span className="text-white/50 text-2xl font-normal font-serif block">Dinero que NO llega a tu audiencia</span>
+                        <span className="text-white/50 text-2xl font-normal font-serif">Dinero que NO llega a tu audiencia</span>
                         <div className="flex items-center justify-center gap-8">
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-white/60 text-2xl font-normal">$</span>
-                                <span className="text-white text-7xl font-bold font-serif">100</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-white/60 text-3xl font-normal">$</span>
+                                <span className="text-white text-8xl font-bold font-serif">100</span>
                             </div>
-                            <span className="text-white/40 text-5xl font-light">→</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-white/60 text-2xl font-normal">$</span>
-                                <span className="text-white text-7xl font-bold font-serif">44</span>
+                            <span className="text-white/40 text-6xl font-light">→</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-white/60 text-3xl font-normal">$</span>
+                                <span className="text-white text-8xl font-bold font-serif">44</span>
                             </div>
                         </div>
-                        <span className="text-white/30 text-lg font-normal italic">Por cada $100 invertidos, solo $44 llegan</span>
+                        <span className="text-white/30 text-base font-normal italic">Por cada $100 invertidos,<br />solo $44 llegan</span>
                     </motion.div>
                 </div>
             </div>
