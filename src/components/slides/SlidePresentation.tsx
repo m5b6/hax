@@ -117,15 +117,11 @@ export function SlidePresentation({
                             e.stopPropagation();
                             goToNextSlide();
                         }}
-                        aria-label={currentSlide === slides.length - 1 ? "Start demo" : "Next slide"}
+                        aria-label={"Next slide"}
                     >
-                        {currentSlide === slides.length - 1 ? (
-                            <span className="start-demo-text">Comenzar Demo</span>
-                        ) : (
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M9 18l6-6-6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        )}
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M9 18l6-6-6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                     </button>
                 </>
             )}
