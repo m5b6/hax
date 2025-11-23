@@ -11,6 +11,7 @@ import { SlidePresentation } from "@/components/slides/SlidePresentation";
 import { Slide01Adsombroso } from "@/components/slides/Slide01Adsombroso";
 import { Slide02BigProblem } from "@/components/slides/Slide02BigProblem";
 import { Slide03MoreProblems } from "@/components/slides/Slide03MoreProblems";
+import { Slide04UniversalProblem } from "@/components/slides/Slide04UniversalProblem";
 
 function WizardContent() {
     const searchParams = useSearchParams();
@@ -82,6 +83,10 @@ function WizardContent() {
         {
             id: "slide-03-more-problems",
             component: <Slide03MoreProblems />,
+        },
+        {
+            id: "slide-04-universal-problem",
+            component: <Slide04UniversalProblem />,
         },
         // More slides will be added here
     ];
