@@ -70,5 +70,5 @@ EXAMPLE OUTPUT:
 "Cinematic 9:16 vertical video with premium tech aesthetic, scene dominated by electric blue (#00A8FF) and silver-white tones. Opens with dynamic fast zoom onto wireless earbuds resting on brushed metal surface, soft studio lighting creating elegant highlights. Camera smoothly circles the product as a hand enters frame, fingers delicately lifting one earbud to reveal close-up details of charging case LED. Cut to intimate lifestyle shot showing person wearing earbuds in modern minimalist room flooded with natural light, subtle bokeh effect in background. Smooth transition reveals sound wave visualization pulsing in blue matching brand color, suggesting premium audio quality. Final shot holds on product with brand logo elegantly displayed, creating a clean and aspirational conclusion."
 
 Remember: Write as if directing a cinematographer. Be specific, visual, and temporal. No marketing speak.`,
-   model: openai("gpt-4o"),
+  model: openai("gpt-4.1-nano"),
 });

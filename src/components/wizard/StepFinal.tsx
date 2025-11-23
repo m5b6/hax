@@ -138,6 +138,8 @@ export const StepFinal = () => {
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
   const hasGeneratedPostsRef = useRef(false);
   const [postGenerationError, setPostGenerationError] = useState<string | null>(null);
+  const [showGeneratingText, setShowGeneratingText] = useState(true);
+  const [generationCounter, setGenerationCounter] = useState(0);
 
   useEffect(() => {
     // Only generate once when component mounts
@@ -265,6 +267,8 @@ export const StepFinal = () => {
     setPostGenerationError(null);
     setGeneratedPosts([]);
     setCurrentSlide(0);
+    setShowGeneratingText(true);
+    setGenerationCounter(0);
 
     // Si estamos en modo demo, simular loading de 10s y usar URLs hardcodeadas
     if (isDemoMode) {
@@ -325,8 +329,31 @@ export const StepFinal = () => {
       setPostGenerationError(error.message);
     } finally {
       setIsGeneratingPosts(false);
+      setShowGeneratingText(true);
+      setGenerationCounter(0);
     }
   };
+
+  useEffect(() => {
+    if (!isGeneratingPosts) {
+      setShowGeneratingText(true);
+      setGenerationCounter(0);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setShowGeneratingText(false);
+    }, 100);
+
+    const interval = setInterval(() => {
+      setGenerationCounter(prev => prev + 1);
+    }, 10);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [isGeneratingPosts]);
 
   useEffect(() => {
     if (hasGeneratedPostsRef.current) return;
@@ -384,49 +411,10 @@ export const StepFinal = () => {
         // Try to find an image from analysis (Logo) or from generated posts
         let imageUrl = "";
 
-        // 1. Try Logo first (as requested)
-        if (brandLogoUrl && !brandLogoUrl.startsWith('<svg')) {
-          imageUrl = brandLogoUrl;
-        }
+        const mockVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
-        // 2. If no logo, try first generated post image
-        if (!imageUrl && generatedPosts.length > 0 && generatedPosts[0].imageUrl) {
-          imageUrl = generatedPosts[0].imageUrl;
-        }
-
-        // 3. Fallback to analysis images
-        if (!imageUrl) {
-          const analysis = wizardStore.getAgentResponse("urlAnalyses");
-          if (analysis && Array.isArray(analysis)) {
-            for (const result of analysis) {
-              if (result?.images && result.images.length > 0) {
-                imageUrl = result.images[0];
-                break;
-              }
-            }
-          }
-        }
-
-        console.log("Triggering video generation with image:", imageUrl);
-
-        const response = await fetch("/api/agent/generate-video", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            promptText: displayPrompt,
-            imageUrl: imageUrl
-          }),
-        });
-
-        if (!response.ok) throw new Error("Failed to generate video");
-
-        const data = await response.json();
-
-        if (data.output && Array.isArray(data.output) && data.output.length > 0) {
-          const videoUrl = data.output[0];
-          setVideoResult(videoUrl);
-          wizardStore.setAgentResponse("videoResult", videoUrl);
-        }
+        setVideoResult(mockVideoUrl);
+        wizardStore.setAgentResponse("videoResult", mockVideoUrl);
       } catch (error) {
         console.error("Error generating video:", error);
       } finally {
@@ -442,22 +430,52 @@ export const StepFinal = () => {
   const nextSlide = () => setCurrentSlide(prev => (prev + 1) % generatedPosts.length);
   const prevSlide = () => setCurrentSlide(prev => (prev - 1 + generatedPosts.length) % generatedPosts.length);
 
+  // Instagram modal state
+  const [isInstagramModalOpen, setIsInstagramModalOpen] = useState(false);
+  const [isPostingToInstagram, setIsPostingToInstagram] = useState(false);
+  const [instagramApiResponse, setInstagramApiResponse] = useState<any>(null);
+
+  const handleInstagramUpload = async () => {
+    if (!videoResult) return;
+
+    setIsInstagramModalOpen(true);
+    setIsPostingToInstagram(true);
+    setInstagramApiResponse(null);
+
+    try {
+      const response = await fetch('https://n8n.llaima.ai/webhook/video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: videoResult }),
+      });
+
+      const data = await response.json();
+      setInstagramApiResponse(data);
+    } catch (error: any) {
+      setInstagramApiResponse({ error: error.message || 'Failed to post video' });
+    } finally {
+      setIsPostingToInstagram(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col">
       {/* Video Prompt Card - Always show, even before streaming starts */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <Card className="border-none overflow-hidden rounded-xl bg-white relative transition-shadow duration-700"
+        <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative transition-shadow duration-700"
           style={{
             boxShadow: displayPrompt
-              ? '0 10px 30px -5px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)'
-              : '0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
+              ? '0 20px 40px -10px rgba(59, 130, 246, 0.2), 0 0 0 1px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
+              : '0 8px 24px -4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
           }}
         >
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+          <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2 text-slate-900 font-medium">
                 {isGenerating ? (
@@ -467,8 +485,8 @@ export const StepFinal = () => {
                   </>
                 ) : (
                   <>
-                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
-                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
+                    <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shadow-[0_0_0_4px_rgba(34,197,94,0.4),0_4px_12px_rgba(34,197,94,0.5)] ring-2 ring-[#22C55E]/30">
+                      <CheckCircle2 className="w-5 h-5 text-white" fill="currentColor" strokeWidth={2} stroke="#22C55E" />
                     </div>
                     <FileText className="w-4 h-4 text-slate-500" />
                     <span>Guía Visual</span>
@@ -552,9 +570,9 @@ export const StepFinal = () => {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           transition={{ duration: 0.5 }}
-          className="flex justify-center -my-1 relative z-0"
+          className="flex justify-center relative z-0"
         >
-          <div className="relative flex flex-col items-center h-16">
+          <div className="relative flex flex-col items-center h-10">
             {/* The Beam */}
             <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
               <motion.div
@@ -600,22 +618,38 @@ export const StepFinal = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
+          <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
             style={{
-              boxShadow: '0 -10px 30px -5px rgba(236, 72, 153, 0.15), 0 0 0 1px rgba(236, 72, 153, 0.1)'
+              boxShadow: '0 20px 40px -10px rgba(236, 72, 153, 0.2), 0 0 0 1px rgba(236, 72, 153, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
             }}
           >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
+            <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
               <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
                 <div className="flex items-center gap-2">
                   {isGeneratingPosts ? (
-                    <Sparkles className="w-4 h-4 text-slate-500" />
+                    <>
+                      <Sparkles className="w-4 h-4 text-slate-500" />
+                      <span>Contenido Generado</span>
+                      {showGeneratingText ? (
+                        <span className="text-xs text-slate-400 font-normal">Generando...</span>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-normal">({(generationCounter / 100).toFixed(2)}s)</span>
+                      )}
+                    </>
                   ) : (
-                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
-                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
-                    </div>
+                    <>
+                      <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shadow-[0_0_0_4px_rgba(34,197,94,0.4),0_4px_12px_rgba(34,197,94,0.5)] ring-2 ring-[#22C55E]/30">
+                        <CheckCircle2 className="w-5 h-5 text-white" fill="currentColor" strokeWidth={2} stroke="#22C55E" />
+                      </div>
+                      <ImageIcon className="w-4 h-4 text-slate-500" />
+                      <span>Contenido Generado</span>
+                      {generatedPosts.length > 0 && (
+                        <span className="text-xs text-slate-400 font-normal">
+                          ({generatedPosts.length} {generatedPosts.length === 1 ? 'publicación' : 'publicaciones'})
+                        </span>
+                      )}
+                    </>
                   )}
-                  <span>Contenido Generado</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {!isGeneratingPosts && generatedPosts.length > 0 && (
@@ -640,14 +674,27 @@ export const StepFinal = () => {
               {isGeneratingPosts ? (
                 <div className="relative w-full bg-slate-50/50 group">
                   <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
-                    <div className="flex gap-6 w-full px-6 justify-center">
-                      {[0, 1, 2].map((idx) => (
+                    <motion.div
+                      className="flex gap-6 px-6"
+                      animate={{
+                        x: [0, -816],
+                      }}
+                      transition={{
+                        duration: 10,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      style={{
+                        width: "max-content",
+                      }}
+                    >
+                      {[...Array(6)].map((_, idx) => (
                         <motion.div
                           key={idx}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: idx * 0.1, duration: 0.3 }}
-                          className="flex flex-col items-center bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden flex-1 max-w-[240px]"
+                          transition={{ delay: (idx % 3) * 0.1, duration: 0.3 }}
+                          className="flex flex-col items-center bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden flex-shrink-0 w-[240px]"
                         >
                           <div className="h-12 w-full border-b border-slate-100 flex items-center px-3 gap-2">
                             <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />
@@ -656,14 +703,14 @@ export const StepFinal = () => {
                           <div className="relative aspect-square w-full bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 animate-pulse">
                             <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/30 to-transparent" />
                           </div>
-                          <div className="w-full space-y-2 px-4 pb-4">
+                          <div className="w-full space-y-2 mt-2 px-4 pb-4">
                             <div className="h-3 bg-slate-200 rounded-full animate-pulse" />
                             <div className="h-3 bg-slate-200 rounded-full animate-pulse w-4/5" />
                             <div className="h-3 bg-slate-200 rounded-full animate-pulse w-3/5" />
                           </div>
                         </motion.div>
                       ))}
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
               ) : generatedPosts.length > 0 ? (
@@ -671,7 +718,7 @@ export const StepFinal = () => {
                   <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
                     <AnimatePresence mode="wait">
                       <motion.div
-                        key={currentSlide}
+                        key={generatedPosts[currentSlide]?.imageUrl || currentSlide}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
@@ -679,7 +726,7 @@ export const StepFinal = () => {
                         className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
                       >
                         <div className="w-full max-w-[350px] bg-white rounded-lg overflow-hidden shadow-lg border border-slate-200 flex flex-col">
-                          {generatedPosts[currentSlide].imageUrl ? (
+                          {generatedPosts[currentSlide]?.imageUrl ? (
                             <>
                               <div className="h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100 shrink-0">
                                 {brandLogoUrl && (
@@ -714,9 +761,11 @@ export const StepFinal = () => {
                               </div>
                               <div className="relative w-full aspect-square bg-slate-100">
                                 <img
+                                  key={generatedPosts[currentSlide].imageUrl}
                                   src={generatedPosts[currentSlide].imageUrl}
                                   alt={`Generated post ${currentSlide + 1}`}
                                   className="absolute inset-0 w-full h-full object-cover"
+                                  loading="eager"
                                 />
                               </div>
                               <div className="bg-white z-20 px-3 flex items-center border-t border-slate-100 h-12 shrink-0">
@@ -805,147 +854,291 @@ export const StepFinal = () => {
             </CardContent>
           </Card>
         </motion.div>
-      )}
+      )
+      }
 
-      {/* Generated Video Card */}
-      {(isGeneratingVideo || (displayPrompt && videoResult)) && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
-          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
-            style={{
-              boxShadow: '0 10px 30px -5px rgba(139, 92, 246, 0.15), 0 0 0 1px rgba(139, 92, 246, 0.1)'
-            }}
+      {/* Connecting Flow - Contenido Generado to Video de Campaña */}
+      {
+        !isGenerating && displayPrompt && generatedPosts.length > 0 && (isGeneratingVideo || videoResult) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center relative z-0"
           >
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3 px-4">
-              <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
-                <div className="flex items-center gap-2">
-                  {isGeneratingVideo ? (
-                    <div className="w-4 h-4 flex items-center justify-center">
-                      <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
-                    </div>
-                  ) : (
-                    <div className="w-4 h-4 rounded-full bg-[#30D158] flex items-center justify-center">
-                      <CheckCircle2 className="w-3 h-3 text-white" fill="currentColor" strokeWidth={0} />
-                    </div>
-                  )}
-                  <span>{isGeneratingVideo ? "Generando Reel..." : "Video de Campaña"}</span>
-                </div>
-                {videoResult && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
-                    <Share2 className="w-3 h-3 text-slate-400" />
-                  </Button>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="relative w-full bg-slate-900 flex items-center justify-center min-h-[400px]">
-                {isGeneratingVideo ? (
-                  <div className="flex flex-col items-center gap-4 p-8 text-center">
-                    <div className="relative w-16 h-16">
-                      <div className="absolute inset-0 rounded-full border-4 border-purple-500/30"></div>
-                      <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
-                      <Video className="absolute inset-0 m-auto w-6 h-6 text-purple-500" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-white font-medium">Creando tu video</p>
-                      <p className="text-slate-400 text-sm">Esto puede tomar unos minutos...</p>
-                    </div>
-                  </div>
-                ) : (
-                  <video
-                    src={videoResult!}
-                    controls
-                    className="w-full h-full max-h-[600px] object-contain"
-                    poster={generatedPosts[0]?.imageUrl}
-                  />
-                )}
+            <div className="relative flex flex-col items-center h-10">
+              {/* The Beam */}
+              <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
+                <motion.div
+                  className="absolute top-0 left-0 w-full bg-gradient-to-b from-pink-500 via-purple-500 to-blue-500"
+                  initial={{ height: "0%" }}
+                  animate={{ height: "100%" }}
+                  transition={{ duration: 0.8, ease: "circOut", delay: 0.2 }}
+                />
+                {/* Light Pulse */}
+                <motion.div
+                  className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
+                  animate={{ top: ["-100%", "200%"] }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "linear",
+                    repeatDelay: 0.5
+                  }}
+                />
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
 
-      {/* Connecting Flow - Active Data Link to Upload Step */}
-      {!isGenerating && displayPrompt && generatedPosts.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          transition={{ duration: 0.5 }}
-          className="flex justify-center -my-1 relative z-0"
-        >
-          <div className="relative flex flex-col items-center h-16">
-            {/* The Beam */}
-            <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
+              {/* Connection Nodes */}
               <motion.div
-                className="absolute top-0 left-0 w-full bg-gradient-to-b from-pink-500 via-purple-500 to-blue-500"
-                initial={{ height: "0%" }}
-                animate={{ height: "100%" }}
-                transition={{ duration: 0.8, ease: "circOut", delay: 0.2 }}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className="absolute top-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10"
               />
-              {/* Light Pulse */}
               <motion.div
-                className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
-                animate={{ top: ["-100%", "200%"] }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "linear",
-                  repeatDelay: 0.5
-                }}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.9 }}
+                className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(139,92,246,0.8)] ring-2 ring-white z-10"
               />
             </div>
+          </motion.div>
+        )
+      }
 
-            {/* Connection Nodes */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3 }}
-              className="absolute top-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10"
-            />
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.9 }}
-              className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10"
-            />
-          </div>
-        </motion.div>
-      )}
+      {/* Generated Video Card */}
+      {
+        (isGeneratingVideo || (displayPrompt && videoResult)) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
+              style={{
+                boxShadow: '0 20px 40px -10px rgba(139, 92, 246, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
+              }}
+            >
+              <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
+                <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
+                  <div className="flex items-center gap-2">
+                    {isGeneratingVideo ? (
+                      <div className="w-4 h-4 flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shadow-[0_0_0_4px_rgba(34,197,94,0.4),0_4px_12px_rgba(34,197,94,0.5)] ring-2 ring-[#22C55E]/30">
+                        <CheckCircle2 className="w-5 h-5 text-white" fill="currentColor" strokeWidth={2} stroke="#22C55E" />
+                      </div>
+                    )}
+                    <span>{isGeneratingVideo ? "Generando Reel..." : "Video de Campaña"}</span>
+                  </div>
+                  {videoResult && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.open(videoResult, '_blank')}>
+                      <Share2 className="w-3 h-3 text-slate-400" />
+                    </Button>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="relative w-full bg-slate-900 flex items-center justify-center min-h-[400px]">
+                  {isGeneratingVideo ? (
+                    <div className="flex flex-col items-center gap-4 p-8 text-center">
+                      <div className="relative w-16 h-16">
+                        <div className="absolute inset-0 rounded-full border-4 border-purple-500/30"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
+                        <Video className="absolute inset-0 m-auto w-6 h-6 text-purple-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-white font-medium">Creando tu video</p>
+                        <p className="text-slate-400 text-sm">Esto puede tomar unos minutos...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <video
+                      src={videoResult!}
+                      controls
+                      className="w-full h-full max-h-[600px] object-contain"
+                      poster={generatedPosts[0]?.imageUrl}
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )
+      }
+
+      {/* Connecting Flow - Active Data Link to Upload Step */}
+      {
+        !isGenerating && displayPrompt && generatedPosts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center relative z-0"
+          >
+            <div className="relative flex flex-col items-center h-10">
+              {/* The Beam */}
+              <div className="w-[2px] h-full bg-slate-200 overflow-hidden rounded-full relative">
+                <motion.div
+                  className="absolute top-0 left-0 w-full bg-gradient-to-b from-pink-500 via-purple-500 to-blue-500"
+                  initial={{ height: "0%" }}
+                  animate={{ height: "100%" }}
+                  transition={{ duration: 0.8, ease: "circOut", delay: 0.2 }}
+                />
+                {/* Light Pulse */}
+                <motion.div
+                  className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-white to-transparent opacity-80"
+                  animate={{ top: ["-100%", "200%"] }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "linear",
+                    repeatDelay: 0.5
+                  }}
+                />
+              </div>
+
+              {/* Connection Nodes */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3 }}
+                className="absolute top-0 w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)] ring-2 ring-white z-10"
+              />
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.9 }}
+                className="absolute bottom-0 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)] ring-2 ring-white z-10"
+              />
+            </div>
+          </motion.div>
+        )
+      }
 
       {/* Upload to Instagram Step */}
-      {!isGenerating && displayPrompt && generatedPosts.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-        >
-          <Card className="border-none overflow-hidden rounded-xl bg-white relative"
-            style={{
-              boxShadow: '0 10px 30px -5px rgba(64, 201, 255, 0.2), 0 0 0 1px rgba(64, 201, 255, 0.1)'
-            }}
+      {
+        !isGenerating && displayPrompt && generatedPosts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
           >
-            <CardContent className="p-6">
-              <Button
-                onClick={() => {
-                  window.open('https://www.instagram.com/create/select/', '_blank');
-                }}
-                className="w-full px-8 py-6 text-base font-medium text-white rounded-full flex items-center justify-center gap-2"
+            <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
+              style={{
+                boxShadow: '0 20px 40px -10px rgba(64, 201, 255, 0.25), 0 0 0 1px rgba(64, 201, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
+              }}
+            >
+              <CardContent className="p-6">
+                <Button
+                  onClick={handleInstagramUpload}
+                  className="w-full px-8 py-6 text-base font-medium text-white rounded-full flex items-center justify-center gap-2"
+                  style={{
+                    background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                    boxShadow: '0 4px 20px rgba(188, 24, 136, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  <Instagram className="w-5 h-5" />
+                  Subir a Instagram
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )
+      }
+
+      {/* Instagram Modal */}
+      <AnimatePresence>
+        {isInstagramModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => !isPostingToInstagram && setIsInstagramModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative z-10 w-full max-w-lg"
+            >
+              <Card className="border-none overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl relative"
                 style={{
-                  background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-                  boxShadow: '0 4px 20px rgba(188, 24, 136, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 20px 40px -10px rgba(188, 24, 136, 0.3), 0 0 0 1px rgba(188, 24, 136, 0.15), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)'
                 }}
               >
-                <Instagram className="w-5 h-5" />
-                Subir a Instagram
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-    </div>
+                <CardHeader className="bg-gradient-to-b from-white/80 to-slate-50/40 border-b border-slate-200/60 py-3 px-4 backdrop-blur-sm">
+                  <CardTitle className="text-sm flex items-center justify-between text-slate-900 font-medium">
+                    <div className="flex items-center gap-2">
+                      <Instagram className="w-4 h-4 text-slate-500" />
+                      <span>Subir a Instagram</span>
+                    </div>
+                    {!isPostingToInstagram && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsInstagramModalOpen(false)}
+                        className="h-6 w-6 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                      >
+                        <span className="text-lg">×</span>
+                      </Button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {isPostingToInstagram ? (
+                    <div className="flex flex-col items-center gap-4 py-8">
+                      <div className="relative w-16 h-16">
+                        <div className="absolute inset-0 rounded-full border-4 border-pink-500/30"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-t-pink-500 animate-spin"></div>
+                        <Instagram className="absolute inset-0 m-auto w-6 h-6 text-pink-500" />
+                      </div>
+                      <div className="space-y-1 text-center">
+                        <p className="text-slate-900 font-medium">Subiendo video...</p>
+                        <p className="text-slate-400 text-sm">Procesando tu contenido</p>
+                      </div>
+                    </div>
+                  ) : instagramApiResponse ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/20 mx-auto">
+                        <CheckCircle2 className="w-6 h-6 text-green-500" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-center font-medium text-slate-900">Respuesta del servidor</h3>
+                        <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50/50 p-4 rounded-lg border border-slate-100 overflow-auto max-h-[300px]">
+                          {JSON.stringify(instagramApiResponse, null, 2)}
+                        </pre>
+                      </div>
+                      <Button
+                        onClick={() => setIsInstagramModalOpen(false)}
+                        className="w-full"
+                        style={{
+                          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                        }}
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div >
   );
 };
 

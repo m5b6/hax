@@ -1,10 +1,19 @@
+
+"use client";
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { WizardStoreProvider } from "@/contexts/WizardStore";
-import DynamicColorBends from "@/components/DynamicColorBends";
-import { DraggableStoreDebug } from "@/components/DraggableStoreDebug";
+import dynamic from "next/dynamic";
+
+const DynamicColorBends = dynamic(() => import("@/components/DynamicColorBends"), {
+  ssr: false,
+});
+
+const DraggableStoreDebug = dynamic(() => import("@/components/DraggableStoreDebug").then(mod => ({ default: mod.DraggableStoreDebug })), {
+  ssr: false,
+});
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -20,10 +29,6 @@ const instrumentSerif = Instrument_Serif({
 // We'll use Inter with a specific style for MCQ titles
 const instrumentSans = inter; // Fallback to Inter for now
 
-export const metadata: Metadata = {
-  title: "Copiloto de Campañas",
-  description: "Apple-like reductionist copilot for Meta ads",
-};
 
 export default function RootLayout({
   children,

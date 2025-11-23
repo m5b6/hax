@@ -78,6 +78,36 @@ export const WizardLayout = ({
         />
       </div>
 
+      {/* Ao. Logo - Top Right of App */}
+      <motion.div
+        initial={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="fixed top-4 right-8 z-50"
+      >
+        <div className="relative w-12 h-12">
+          <motion.div
+            className="absolute -inset-1 rounded-full"
+            style={{
+              background: "conic-gradient(from 0deg, #40C9FF, #E81CFF, #FF9F0A, #FFD60A, #40C9FF)",
+            }}
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          />
+          <div className="relative w-full h-full rounded-full bg-black/80 backdrop-blur-md flex items-center justify-center">
+            <span 
+              className="text-white text-xl font-normal"
+              style={{ fontFamily: 'var(--font-instrument-serif), serif' }}
+            >
+              Ao.
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
       <main className="w-full max-w-2xl mx-auto relative z-10">
         <AnimatePresence mode="wait" custom={currentStep}>
           <motion.div
