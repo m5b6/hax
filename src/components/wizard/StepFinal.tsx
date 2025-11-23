@@ -18,11 +18,11 @@ import { QRCodeSVG } from "qrcode.react";
 const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0iI2NjYyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjwvdGV4dD48L3N2Zz4=';
 
 const DEMO_IMAGE_URLS = [
-  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/gemini_2_5_flash___A_minimalist_composition_featuring_the_iPhone_17_Pro_on_a_clean_white_background_.png", 
-  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_The_iPhone_17_Pro__in_112325+(1).png", 
-  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/result.jpg", 
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_minimalistic_product_shot_featuring_112325.png", 
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_cohesive_hero_illustration_capturing_112325+(1).png", 
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_Una_empleada_de_tecnolog_a__con_112325.png", 
 ];
-const DEMO_VIDEO_URL = "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/iphone-17pro.mp4"; 
+const DEMO_VIDEO_URL = "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Adobe+Express+-+An_8_second_9_16_vertical_video_with_a_clean__minimal_HR_tech_aesthetic__Dominant_colors__Buk_blue__.mp4"; 
 
 const getIconByName = (iconName: string): LucideIcon => {
   if (!iconName || typeof iconName !== 'string') {
