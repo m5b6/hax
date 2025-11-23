@@ -602,8 +602,8 @@ export const StepFinal = () => {
                           className="flex flex-col items-center bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden flex-1 max-w-[240px]"
                         >
                           <div className="h-12 w-full border-b border-slate-100 flex items-center px-3 gap-2">
-                             <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />
-                             <div className="h-3 w-24 bg-slate-200 rounded animate-pulse" />
+                            <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse" />
+                            <div className="h-3 w-24 bg-slate-200 rounded animate-pulse" />
                           </div>
                           <div className="relative aspect-square w-full bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 animate-pulse">
                             <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/30 to-transparent" />
@@ -619,7 +619,6 @@ export const StepFinal = () => {
                   </div>
                 </div>
               ) : generatedPosts.length > 0 ? (
-<<<<<<< HEAD
                 <div className="relative w-full bg-slate-50/50 group">
                   <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
                     <AnimatePresence mode="wait">
@@ -631,111 +630,10 @@ export const StepFinal = () => {
                         transition={{ duration: 0.3 }}
                         className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
                       >
-                        <div className="relative aspect-square w-full max-w-[400px] rounded-lg overflow-hidden shadow-lg border border-slate-200 bg-white">
+                        <div className="w-full max-w-[350px] bg-white rounded-lg overflow-hidden shadow-lg border border-slate-200 flex flex-col">
                           {generatedPosts[currentSlide].imageUrl ? (
-=======
-                 <div className="relative w-full bg-slate-50/50 group">
-                    <div className="overflow-hidden relative h-[500px] w-full flex items-center justify-center">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={currentSlide}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3 }}
-                                className="w-full h-full p-6 flex flex-col items-center justify-center gap-6"
-                            >
-                                <div className="w-full max-w-[350px] bg-white rounded-lg overflow-hidden shadow-lg border border-slate-200 flex flex-col">
-                                    {generatedPosts[currentSlide].imageUrl ? (
-                                        <>
-                                            <div className="h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100 shrink-0">
-                                                {brandLogoUrl && (
-                                                    <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
-                                                        style={{
-                                                            background: brandColors.length > 0 
-                                                                ? `linear-gradient(135deg, ${brandColors[0] || '#40C9FF'}, ${brandColors[1] || brandColors[0] || '#E81CFF'})`
-                                                                : 'linear-gradient(135deg, #40C9FF, #E81CFF)',
-                                                            padding: '2px'
-                                                        }}
-                                                    >
-                                                        <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                                                            {brandLogoUrl.trim().startsWith("<svg") ? (
-                                                                <div
-                                                                    className="w-[70%] h-[70%] text-slate-900 [&_svg]:w-full [&_svg]:h-full [&_svg]:fill-current"
-                                                                    dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
-                                                                />
-                                                            ) : (
-                                                                <img
-                                                                    src={brandLogoUrl}
-                                                                    alt="Logo"
-                                                                    className="w-[70%] h-[70%] object-contain"
-                                                                    referrerPolicy="no-referrer"
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <span className="text-sm font-semibold text-slate-900 truncate">
-                                                    {brandName || "Marca"}
-                                                </span>
-                                            </div>
-                                            <div className="relative w-full aspect-square bg-slate-100">
-                                                <img 
-                                                    src={generatedPosts[currentSlide].imageUrl} 
-                                                    alt={`Generated post ${currentSlide + 1}`}
-                                                    className="absolute inset-0 w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="bg-white z-20 px-3 flex items-center border-t border-slate-100 h-12 shrink-0">
-                                                <div className="flex items-center gap-2 w-full">
-                                                    <span className="text-sm font-semibold text-slate-900 shrink-0">
-                                                        {brandName || "Marca"}
-                                                    </span>
-                                                    <p className="text-sm text-slate-600 truncate">
-                                                        {(() => {
-                                                            let caption = generatedPosts[currentSlide].caption;
-                                                            
-                                                            if (!caption) {
-                                                                return generatedPosts[currentSlide].description || '';
-                                                            }
-                                                            
-                                                            if (typeof caption !== 'string') {
-                                                                caption = String(caption);
-                                                            }
-                                                            
-                                                            if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
-                                                                try {
-                                                                    const parsed = JSON.parse(caption);
-                                                                    caption = parsed.caption || parsed.description || caption;
-                                                                } catch {
-                                                                    caption = caption;
-                                                                }
-                                                            }
-                                                            
-                                                            if (typeof caption !== 'string') {
-                                                                caption = String(caption);
-                                                            }
-                                                            
-                                                            return caption;
-                                                        })()}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="w-full aspect-[4/5] flex items-center justify-center bg-slate-100 text-slate-400">
-                                            <ImageIcon className="w-12 h-12 opacity-20" />
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </AnimatePresence>
-                        
-                        {/* Navigation Controls */}
-                        {generatedPosts.length > 1 && (
->>>>>>> 3fbbf76 (ok)
                             <>
-                              <div className="absolute top-0 left-0 right-0 h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100">
+                              <div className="h-12 bg-white z-20 flex items-center px-3 gap-2 border-b border-slate-100 shrink-0">
                                 {brandLogoUrl && (
                                   <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
                                     style={{
@@ -766,86 +664,51 @@ export const StepFinal = () => {
                                   {brandName || "Marca"}
                                 </span>
                               </div>
-                              <div className="absolute top-12 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
-                                <div className="text-sm font-semibold text-slate-900 mb-1">
-                                  {brandName || "Marca"}
-                                </div>
-                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
-                                  {(() => {
-                                    let caption = generatedPosts[currentSlide].caption;
-
-                                    if (!caption) {
-                                      return generatedPosts[currentSlide].description || '';
-                                    }
-
-                                    if (typeof caption !== 'string') {
-                                      caption = String(caption);
-                                    }
-
-                                    if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
-                                      try {
-                                        const parsed = JSON.parse(caption);
-                                        caption = parsed.caption || parsed.description || caption;
-                                      } catch {
-                                        caption = caption;
-                                      }
-                                    }
-
-                                    if (typeof caption !== 'string') {
-                                      caption = String(caption);
-                                    }
-
-                                    return caption.length > 150
-                                      ? caption.substring(0, 150) + '...'
-                                      : caption;
-                                  })()}
-                                </p>
-                              </div>
-                              <div className="absolute top-12 bottom-[100px] left-0 right-0 z-0">
+                              <div className="relative w-full aspect-square bg-slate-100">
                                 <img
                                   src={generatedPosts[currentSlide].imageUrl}
                                   alt={`Generated post ${currentSlide + 1}`}
-                                  className="w-full h-full object-cover"
+                                  className="absolute inset-0 w-full h-full object-cover"
                                 />
                               </div>
-                              <div className="absolute bottom-0 left-0 right-0 bg-white z-20 px-3 py-3 border-t border-slate-100 min-h-[100px]">
-                                <div className="text-sm font-semibold text-slate-900 mb-1">
-                                  {brandName || "Marca"}
-                                </div>
-                                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
-                                  {(() => {
-                                    let caption = generatedPosts[currentSlide].caption;
+                              <div className="bg-white z-20 px-3 flex items-center border-t border-slate-100 h-12 shrink-0">
+                                <div className="flex items-center gap-2 w-full">
+                                  <span className="text-sm font-semibold text-slate-900 shrink-0">
+                                    {brandName || "Marca"}
+                                  </span>
+                                  <p className="text-sm text-slate-600 truncate">
+                                    {(() => {
+                                      let caption = generatedPosts[currentSlide].caption;
 
-                                    if (!caption) {
-                                      return generatedPosts[currentSlide].description || '';
-                                    }
-
-                                    if (typeof caption !== 'string') {
-                                      caption = String(caption);
-                                    }
-
-                                    if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
-                                      try {
-                                        const parsed = JSON.parse(caption);
-                                        caption = parsed.caption || parsed.description || caption;
-                                      } catch {
-                                        caption = caption;
+                                      if (!caption) {
+                                        return generatedPosts[currentSlide].description || '';
                                       }
-                                    }
 
-                                    if (typeof caption !== 'string') {
-                                      caption = String(caption);
-                                    }
+                                      if (typeof caption !== 'string') {
+                                        caption = String(caption);
+                                      }
 
-                                    return caption.length > 150
-                                      ? caption.substring(0, 150) + '...'
-                                      : caption;
-                                  })()}
-                                </p>
+                                      if (caption.trim().startsWith('{') && caption.includes('"caption"')) {
+                                        try {
+                                          const parsed = JSON.parse(caption);
+                                          caption = parsed.caption || parsed.description || caption;
+                                        } catch {
+                                          caption = caption;
+                                        }
+                                      }
+
+                                      if (typeof caption !== 'string') {
+                                        caption = String(caption);
+                                      }
+
+                                      return caption;
+                                    })()}
+                                  </p>
+                                </div>
                               </div>
                             </>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+                            <div className="w-full aspect-[4/5] flex items-center justify-center bg-slate-100 text-slate-400">
                               <ImageIcon className="w-12 h-12 opacity-20" />
                             </div>
                           )}
