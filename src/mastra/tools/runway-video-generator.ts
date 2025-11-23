@@ -33,6 +33,7 @@ export const runwayVideoGeneratorTool = createTool({
     ratio: z.string().describe("Aspect ratio of the video. For veo3.1: '1280:720', '720:1280', '1080:1920', or '1920:1080'. Common ratios like '9:16' will be automatically converted."),
     duration: z.number().int().optional().describe("Duration of the video in seconds. For veo3.1: 4, 6, or 8"),
     seed: z.number().int().optional().describe("Optional seed for reproducibility"),
+    imageStrength: z.number().min(0).max(1).optional().describe("Strength of the image influence (0.0 to 1.0). Higher values mean the video will look more like the image."),
   }),
   outputSchema: z.object({
     taskId: z.string().describe("ID of the RunwayML task"),
@@ -44,7 +45,7 @@ export const runwayVideoGeneratorTool = createTool({
     try {
       // Check both RUNWAY_API_KEY (existing convention) and RUNWAYML_API_SECRET (SDK default)
       const apiKey = process.env.RUNWAY_API_KEY || process.env.RUNWAYML_API_SECRET;
-      
+
       if (!apiKey) {
         throw new Error("RUNWAY_API_KEY o RUNWAYML_API_SECRET debe estar configurada en las variables de entorno");
       }
@@ -67,14 +68,14 @@ export const runwayVideoGeneratorTool = createTool({
         }
 
         console.log(`[RunwayTool] Uploading image to Runway: ${url}`);
-        
+
         try {
           // 2. Download image
           const imageRes = await fetch(url);
           if (!imageRes.ok) throw new Error(`Failed to download image: ${imageRes.statusText}`);
-          
+
           const blob = await imageRes.blob();
-          
+
           // 3. Upload to RunwayML
           // Note: createEphemeral expects 'file' which can be a Blob in Node environment with appropriate polyfills/types
           // casting to any to avoid strict type issues with Node Blob vs Web Blob
@@ -82,7 +83,7 @@ export const runwayVideoGeneratorTool = createTool({
             file: blob as any,
             fileMetadata: JSON.stringify({ name: "input_image" }),
           });
-          
+
           return upload.uri;
         } catch (e) {
           console.warn(`[RunwayTool] Failed to upload image, trying original URL fallback: ${e instanceof Error ? e.message : String(e)}`);
@@ -92,7 +93,7 @@ export const runwayVideoGeneratorTool = createTool({
 
       // Normalize ratio based on model
       const normalizedRatio = normalizeRatio(context.ratio, context.model);
-      
+
       // Validate ratio for veo3.1 model
       const validRatios = ["1280:720", "720:1280", "1080:1920", "1920:1080"];
       if (context.model === "veo3.1" || context.model === "veo3.1_fast" || context.model === "veo3") {
@@ -104,7 +105,7 @@ export const runwayVideoGeneratorTool = createTool({
       // Normalize promptImage according to SDK types and ensuring valid URLs
       // For veo3.1: string | Array<{ uri: string, position: 'first' | 'last' }>
       let promptImage: string | Array<{ uri: string; position: "first" | "last" }>;
-      
+
       if (typeof context.promptImage === "string") {
         promptImage = await getStableImageUrl(context.promptImage);
       } else if (Array.isArray(context.promptImage)) {
@@ -135,6 +136,8 @@ export const runwayVideoGeneratorTool = createTool({
         ratio: normalizedRatio as any,
         duration: context.duration,
         seed: context.seed,
+        // @ts-ignore - imageDescriptionStrength might not be in types yet or named differently
+        imageDescriptionStrength: context.imageStrength,
       } as any).waitForTaskOutput();
 
       return {

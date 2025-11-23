@@ -66,8 +66,8 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
       output: analysisSchema,
     });
 
-    const parsedOutput = typeof result.text === 'string' 
-      ? JSON.parse(result.text) 
+    const parsedOutput = typeof result.text === 'string'
+      ? JSON.parse(result.text)
       : result.text;
 
     const toolResults = result.toolResults || [];
@@ -76,23 +76,24 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
     let primaryColor: string | null = parsedOutput.primaryColor ?? null;
     let secondaryColor: string | null = parsedOutput.secondaryColor ?? null;
     let brandLogoUrl: string | null = parsedOutput.brandLogoUrl ?? null;
-    
+
     console.log('[API] ===== TOOL RESULTS DEBUG =====');
     console.log('[API] Tool results count:', toolResults.length);
     console.log('[API] Tool results structure:', JSON.stringify(toolResults, null, 2));
-    
+
     for (const toolResult of toolResults) {
-      const resultObj = toolResult.payload?.result || toolResult.result || toolResult.output || toolResult;
-      
+      // Type assertion to handle dynamic properties from tool results
+      const resultObj = (toolResult as any).payload?.result || (toolResult as any).output || toolResult;
+
       if (resultObj && typeof resultObj === 'object') {
         if (Array.isArray(resultObj.images)) {
           images = resultObj.images.filter((img: any) => typeof img === 'string' && img.trim().length > 0);
         }
-        
+
         if (Array.isArray(resultObj.colors)) {
           colors = resultObj.colors;
         }
-        
+
         if (!primaryColor && resultObj.primaryColor) {
           primaryColor = resultObj.primaryColor;
         }
@@ -104,7 +105,7 @@ Usa el urlReaderTool para leer la URL y luego proporciona insights categorizados
         }
       }
     }
-    
+
     console.log('[API] Final images:', images.length);
     console.log('[API] Final colors:', colors.length);
     console.log('[API] ===== END DEBUG =====');

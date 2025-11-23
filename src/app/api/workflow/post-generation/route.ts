@@ -78,6 +78,7 @@ interface WizardStoreInput {
             "visual-rhythm"?: string;
             "human-presence"?: string;
         };
+        videoPrompt?: string;
     };
     metadata: {
         createdAt: string;
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
             ...brandColors
         ].filter((color): color is string => Boolean(color) && typeof color === 'string');
 
-        const colorPalette = allBrandColors.length > 0 
+        const colorPalette = allBrandColors.length > 0
             ? allBrandColors.slice(0, 5).join(', ')
             : 'No brand colors detected';
 
@@ -452,3 +453,4 @@ ${logoUrl ? `1. El logo (${logoUrl}) DEBE aparecer visiblemente en cada post
         );
     }
 }
+// Force rebuild

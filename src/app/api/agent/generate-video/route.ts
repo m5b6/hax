@@ -1,83 +1,117 @@
+import { NextResponse } from "next/server";
+import RunwayML from "@runwayml/sdk";
 import { mastra } from "@/mastra";
 
-export const runtime = "nodejs";
+export const maxDuration = 300; // 5 minutes timeout
 
-const MOCK_MODE = true; // Set to false to use real RunwayML API
+const runwayClient = new RunwayML({
+  apiKey: process.env.RUNWAY_API_KEY,
+});
 
-const MOCK_RESULT = {
-  "taskId": "f438d341-0965-40f9-a170-90bd2e9af645",
-  "status": "SUCCEEDED",
-  "output": [
-    "https://dnznrvs05pmza.cloudfront.net/veo3.1/projects/vertex-ai-claude-431722/locations/us-central1/publishers/google/models/veo-3.1-generate-preview/operations/5cab9447-47de-46e9-aa2c-6259477cc597/Un_gato_adorable_movi_ndose_y_jugando_en_un_entorno_natural__mostrando_su_agilidad_y_curiosidad_.mp4?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiZjBmNGRmMjA0N2U1MDhmZiIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc2Mzk0MjQwMH0.lg0ih_f-e3W8YtofdknOo4cRuglZMC16svI0n1u4uJg"
-  ]
-};
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { promptText, imageUrl } = body;
-
-    if (MOCK_MODE) {
-      console.log("[Mock Mode] Returning mock video result");
-      // Simulate delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return new Response(JSON.stringify(MOCK_RESULT), {
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+    const { promptText, imageUrl } = await req.json();
 
     if (!promptText) {
-      return new Response(JSON.stringify({ error: "promptText is required" }), { status: 400 });
+      return NextResponse.json(
+        { error: "promptText is required" },
+        { status: 400 }
+      );
     }
 
-    // Use provided image or fallback
-    const validImageUrl = imageUrl || "https://framerusercontent.com/images/0MzDPgY0gtGns3dG82kzQIYHR18.png";
+    console.log("🎥 Generating video with Gen-3 Alpha Turbo...");
 
-    const agent = mastra.getAgent("runwayVideoAgent");
-    if (!agent) throw new Error("Agent not found");
+    // 1. Generate Audio Script (Spanish)
+    console.log("🔊 Generating audio script...");
+    let audioScript = "";
+    try {
+      const agent = mastra.getAgent("campaignVisualizerAgent"); // Reusing an existing agent for text gen
+      if (agent) {
+        const audioPrompt = `Escribe un guion de voz en off MUY BREVE (1 frase) para un video comercial.
+                Debe ser inspirador y profesional.
+                
+                Contexto visual: "${promptText.substring(0, 300)}..."
+                
+                Solo devuelve el texto del guion. Nada más.`;
 
-    // Use generate() instead of stream() as requested
-    const result = await agent.generate(
-      `Genera un video basado en este prompt: "${promptText}" usando la imagen proporcionada.`,
-      {
-        tools: {
-          "runway-video-generator": {
-            promptText: promptText,
-            promptImage: validImageUrl, // Tool now handles string input and validation
-            model: "veo3.1",
-            ratio: "9:16", // Will be normalized by tool
-            duration: 8
-          }
+        const result = await agent.generate(audioPrompt);
+        audioScript = result.text.replace(/["']/g, "").trim();
+
+        // If agent refuses, just don't use audio
+        if (audioScript.toLowerCase().includes("lo siento") || audioScript.toLowerCase().includes("no puedo")) {
+          audioScript = "";
         }
+
+        console.log("📝 Audio Script:", audioScript);
       }
-    );
-
-    // Parse the tool result
-    console.log("Agent result:", JSON.stringify(result, null, 2));
-    
-    // Extract the tool output from the agent result
-    // The structure depends on how Mastra returns tool outputs in generate()
-    // Usually it's in result.toolResults or we parse the text if the agent repeats it.
-    // But since we called specific tool, we look for its execution result.
-    
-    // For now, assuming we want to return what the tool returned.
-    // In Mastra, agent.generate returns { text, toolResults, ... }
-    const toolResults = result.toolResults;
-    const runwayResult = toolResults?.find(t => t.toolName === "runway-video-generator")?.result;
-
-    if (runwayResult) {
-        return new Response(JSON.stringify(runwayResult), {
-            headers: { "Content-Type": "application/json" }
-        });
+    } catch (e) {
+      console.warn("Failed to generate audio script, proceeding without audio:", e);
     }
 
-    // Fallback if tool didn't run or we can't find result (shouldn't happen if instructions are clear)
-    return new Response(JSON.stringify({ error: "No video generated", details: result.text }), { status: 500 });
+    // Truncate prompt to 1000 characters (Runway limit)
+    // Append instruction to minimize text and ensure script adherence
+    const textMinimizationInstruction = " . Cinematic style, high quality, clean visual, no text overlay, no typography. Follow the action described exactly.";
+    const maxPromptLength = 1000 - textMinimizationInstruction.length;
 
-  } catch (error) {
+    let truncatedPrompt = promptText.length > maxPromptLength ? promptText.substring(0, maxPromptLength) : promptText;
+    truncatedPrompt += textMinimizationInstruction;
+
+    console.log("Prompt (truncated + modified):", truncatedPrompt.substring(0, 50) + "...");
+
+    let videoUrl: string | undefined;
+
+    // User Instruction: ALWAYS use textToVideo endpoint, but add promptImage if available.
+    // Also ensure prompt is max 1000 chars.
+
+    try {
+      const params: any = {
+        promptText: truncatedPrompt,
+        model: "veo3.1_fast", // User insisted on Veo supporting audio
+        ratio: "720:1280", // 9:16 for Reels
+      };
+
+      // Add Audio if script generated
+      if (audioScript) {
+        params.textToSpeech = {
+          text: audioScript,
+          voice: "ontario", // Generic pleasant voice
+        };
+      }
+
+      if (imageUrl) {
+        console.log("Adding reference image to textToVideo request:", imageUrl);
+        params.promptImage = [{ uri: imageUrl }];
+
+        params.imageDescriptionStrength = 0.3;
+      }
+
+      const videoTask = await runwayClient.textToVideo.create(params).waitForTaskOutput();
+      videoUrl = videoTask.output?.[0];
+
+    } catch (error: any) {
+      console.error("❌ Video generation failed:", error);
+      throw error;
+    }
+
+    if (!videoUrl) {
+      throw new Error("No video URL returned from Runway");
+    }
+
+    console.log("✅ Video generated successfully:", videoUrl);
+
+    return NextResponse.json({
+      success: true,
+      output: [videoUrl] // Maintain compatibility with previous array format if needed, or just url
+    });
+
+  } catch (error: any) {
     console.error("Error generating video:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Unknown error occurred",
+      },
+      { status: 500 }
+    );
   }
 }
-
-
