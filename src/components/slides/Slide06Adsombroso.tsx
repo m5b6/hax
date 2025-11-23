@@ -10,7 +10,7 @@ export function Slide06Adsombroso() {
         { text: "Entiende quién eres", delay: 0.5 },
         { text: "Entiende qué haces", delay: 0.7 },
         { text: "Entiende a tu competencia", delay: 0.9 },
-        { text: "Entiende las reglas de META!", delay: 1.1 },
+        { text: "¡Entiende las reglas de META!", delay: 1.1 },
     ];
 
     return (
@@ -40,7 +40,7 @@ export function Slide06Adsombroso() {
                         transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
                         className="text-[80px] font-bold text-white leading-none mb-16 tracking-tight font-serif"
                     >
-                        Adsombroso
+                        <span className="font-black">Ads</span>ombroso
                     </motion.h1>
 
                     {/* Points List */}
