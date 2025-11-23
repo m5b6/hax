@@ -562,6 +562,9 @@ export const StepFinal = () => {
                         repeat: Infinity,
                         ease: "linear",
                       }}
+                      style={{
+                        width: "max-content",
+                      }}
                     >
                       {[...Array(6)].map((_, idx) => (
                         <motion.div
