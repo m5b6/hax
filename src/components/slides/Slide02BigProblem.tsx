@@ -17,29 +17,29 @@ export function Slide02BigProblem() {
                 <AoLogo size={100} animate={true} />
             </motion.div>
 
-            <div className="w-full max-w-6xl">
+            <div className="w-full max-w-7xl mx-auto text-center">
                 {/* Title */}
                 <motion.h1
                     initial={{ y: -30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="text-[56px] font-bold text-white leading-none mb-16 tracking-tight font-serif"
+                    className="text-[56px] font-bold text-white leading-none mb-20 tracking-tight font-serif"
                 >
                     Big Problem
                 </motion.h1>
 
-                {/* Stats Grid - Compact */}
-                <div className="space-y-10">
+                {/* Stats Grid - Full Width Centered */}
+                <div className="space-y-16">
                     {/* Mercado Row */}
                     <motion.div
-                        initial={{ x: -50, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
+                        initial={{ y: 30, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                        className="space-y-3"
+                        className="space-y-6"
                     >
                         <span className="text-white/50 text-2xl font-normal font-serif block">Mercado de Publicidad Digital</span>
-                        <div className="flex items-baseline gap-12">
-                            <div className="flex flex-col items-start gap-1">
+                        <div className="flex items-baseline justify-center gap-20">
+                            <div className="flex flex-col items-center gap-2">
                                 <span className="text-white/30 text-sm font-normal">Gasto Global</span>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-white/60 text-2xl font-normal">$</span>
@@ -47,7 +47,7 @@ export function Slide02BigProblem() {
                                     <span className="text-white text-3xl font-bold font-serif">TN</span>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-start gap-1">
+                            <div className="flex flex-col items-center gap-2">
                                 <span className="text-white/30 text-sm font-normal">DPP</span>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-white/60 text-2xl font-normal">$</span>
@@ -55,7 +55,7 @@ export function Slide02BigProblem() {
                                     <span className="text-white text-3xl font-bold font-serif">BN</span>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-start gap-1">
+                            <div className="flex flex-col items-center gap-2">
                                 <span className="text-white/30 text-sm font-normal">Meta</span>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-white/60 text-2xl font-normal">$</span>
@@ -68,13 +68,13 @@ export function Slide02BigProblem() {
 
                     {/* Agencias Row */}
                     <motion.div
-                        initial={{ x: -50, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
+                        initial={{ y: 30, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
-                        className="space-y-3"
+                        className="space-y-6"
                     >
                         <span className="text-white/50 text-2xl font-normal font-serif block">Agencias e Influencers</span>
-                        <div className="flex items-baseline gap-3">
+                        <div className="flex items-baseline justify-center gap-3">
                             <span className="text-white/60 text-2xl font-normal">$</span>
                             <span className="text-white text-7xl font-bold font-serif">84</span>
                             <span className="text-white text-3xl font-bold font-serif">BN</span>
@@ -84,13 +84,13 @@ export function Slide02BigProblem() {
 
                     {/* Non Working Media Row */}
                     <motion.div
-                        initial={{ x: -50, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
+                        initial={{ y: 30, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.9, ease: "easeOut" }}
-                        className="space-y-3"
+                        className="space-y-6"
                     >
                         <span className="text-white/50 text-2xl font-normal font-serif block">Dinero que NO llega a tu audiencia</span>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center justify-center gap-8">
                             <div className="flex items-baseline gap-1">
                                 <span className="text-white/60 text-2xl font-normal">$</span>
                                 <span className="text-white text-7xl font-bold font-serif">100</span>

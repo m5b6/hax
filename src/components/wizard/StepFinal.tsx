@@ -18,11 +18,11 @@ import { QRCodeSVG } from "qrcode.react";
 const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0iI2NjYyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjwvdGV4dD48L3N2Zz4=';
 
 const DEMO_IMAGE_URLS = [
-  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_minimalistic_product_shot_featuring_112325.png", 
-  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_cohesive_hero_illustration_capturing_112325+(1).png", 
-  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_Una_empleada_de_tecnolog_a__con_112325.png", 
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_minimalistic_product_shot_featuring_112325.png",
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_A_cohesive_hero_illustration_capturing_112325+(1).png",
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_Una_empleada_de_tecnolog_a__con_112325.png",
 ];
-const DEMO_VIDEO_URL = "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Adobe+Express+-+An_8_second_9_16_vertical_video_with_a_clean__minimal_HR_tech_aesthetic__Dominant_colors__Buk_blue__.mp4"; 
+const DEMO_VIDEO_URL = "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Adobe+Express+-+An_8_second_9_16_vertical_video_with_a_clean__minimal_HR_tech_aesthetic__Dominant_colors__Buk_blue__.mp4";
 
 const getIconByName = (iconName: string): LucideIcon => {
   if (!iconName || typeof iconName !== 'string') {
@@ -490,10 +490,10 @@ export const StepFinal = () => {
     ): Promise<{ id: string; permalink: string; type: 'video' | 'image' } | null> => {
       try {
         // Use /image endpoint for images, /video for video
-        const endpoint = type === 'image' 
+        const endpoint = type === 'image'
           ? 'https://n8n.llaima.ai/webhook/image'
           : 'https://n8n.llaima.ai/webhook/video';
-        
+
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
@@ -510,7 +510,7 @@ export const StepFinal = () => {
             permalink: data.permalink,
             type,
           };
-          
+
           // Update state immediately when response arrives - this triggers QR code generation
           setInstagramPostResponses((prev) => {
             // Check if this post already exists (avoid duplicates)
@@ -520,7 +520,7 @@ export const StepFinal = () => {
             console.log(`✅ ${type} posted! QR code should appear now. Total: ${updated.length}`);
             return updated;
           });
-          
+
           return postResult;
         }
         // If response exists but is invalid, still mark as "posted" for UX
@@ -551,7 +551,7 @@ export const StepFinal = () => {
       if (videoResult) {
         postsToProcess.push({
           url: videoResult,
-          caption: "Descubre el iPhone 17 Pro. Potencia sin límites, diseño sin igual. La innovación en tus manos.",
+          caption: "Conoce Buk, la plataforma líder en gestión de personas. Crea un lugar de trabajo más feliz ;)",
           type: 'video'
         });
       }
@@ -570,7 +570,7 @@ export const StepFinal = () => {
 
       // Process posts one at a time
       const successfulPosts: Array<{ id: string; permalink: string; type: 'video' | 'image' }> = [];
-      
+
       for (const post of postsToProcess) {
         try {
           const result = await postAndUpdate(post.url, post.caption, post.type, post.index);
@@ -916,7 +916,7 @@ export const StepFinal = () => {
                           </div>
                           <Bookmark className="w-4 h-4 text-slate-800" />
                         </div>
-                        
+
                         {/* Caption snippet */}
                         <div className="px-3 pb-4 pt-1 flex-1">
                           <p className="text-[10px] line-clamp-2 leading-tight text-slate-600">
@@ -929,7 +929,7 @@ export const StepFinal = () => {
                                 try {
                                   const parsed = JSON.parse(caption);
                                   caption = parsed.caption || parsed.description || caption;
-                                } catch {}
+                                } catch { }
                               }
                               return typeof caption === 'string' ? caption : String(caption);
                             })()}
@@ -1035,9 +1035,9 @@ export const StepFinal = () => {
                 </div>
                 <MoreHorizontal className="w-4 h-4 text-slate-400" />
               </div>
-              
+
               {/* Content */}
-              <div className="aspect-[9/16] w-full bg-slate-900 relative">
+              <div className="aspect-[1/1] w-full bg-slate-900 relative">
                 {isGeneratingVideo ? (
                   <div className="flex flex-col items-center justify-center gap-6 p-8 text-center w-full h-full">
                     <RotatingLoader
@@ -1082,7 +1082,7 @@ export const StepFinal = () => {
                 <div className="p-3 text-xs space-y-1">
                   <p>
                     <span className="font-semibold mr-1">{brandName || "tu_marca"}</span>
-                    Descubre el iPhone 17 Pro. Potencia sin límites, diseño sin igual. La innovación en tus manos. #iPhone17Pro #Apple
+                    Conoce Buk, la plataforma líder en gestión de personas. Crea un lugar de trabajo más feliz ;) #Buk #RRHH #GestiónDeTalento
                   </p>
                   <p className="text-slate-400 text-[10px] uppercase">Hace 2 minutos</p>
                 </div>
@@ -1238,32 +1238,32 @@ export const StepFinal = () => {
                       >
                         <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                           <div className="flex items-center gap-4 mb-4">
-                             {/* Video Thumbnail */}
-                             <div className="relative w-16 h-24 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
-                               {videoResult ? (
-                                 <video src={videoResult} className="w-full h-full object-cover opacity-80" />
-                               ) : (
-                                 <Video className="w-6 h-6 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                               )}
-                               <div className="absolute bottom-1 right-1 bg-black/50 rounded px-1 py-0.5">
-                                 <Video className="w-3 h-3 text-white" />
-                               </div>
-                             </div>
-                             {/* Stats */}
-                             <div className="flex-1 space-y-2">
-                               <div className="flex items-center justify-between text-sm">
-                                 <span className="text-slate-600">1 Reel</span>
-                                 <span className="text-slate-900 font-medium">Listo</span>
-                               </div>
-                               <div className="flex items-center justify-between text-sm">
-                                 <span className="text-slate-600">{generatedPosts.length} Posts</span>
-                                 <span className="text-slate-900 font-medium">Listos</span>
-                               </div>
-                               <div className="h-px bg-slate-200 my-2" />
-                               <p className="text-xs text-slate-500">
-                                 Se publicarán automáticamente en tu perfil.
-                               </p>
-                             </div>
+                            {/* Video Thumbnail */}
+                            <div className="relative w-16 h-24 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
+                              {videoResult ? (
+                                <video src={videoResult} className="w-full h-full object-cover opacity-80" />
+                              ) : (
+                                <Video className="w-6 h-6 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                              )}
+                              <div className="absolute bottom-1 right-1 bg-black/50 rounded px-1 py-0.5">
+                                <Video className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                            {/* Stats */}
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-slate-600">1 Reel</span>
+                                <span className="text-slate-900 font-medium">Listo</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-slate-600">{generatedPosts.length} Posts</span>
+                                <span className="text-slate-900 font-medium">Listos</span>
+                              </div>
+                              <div className="h-px bg-slate-200 my-2" />
+                              <p className="text-xs text-slate-500">
+                                Se publicarán automáticamente en tu perfil.
+                              </p>
+                            </div>
                           </div>
                         </div>
 
@@ -1306,31 +1306,31 @@ export const StepFinal = () => {
                                 )}
                               </div>
                             </div>
-                            
+
                             {instagramPostResponses.find(p => p.type === 'video') && (
-                              <motion.div 
+                              <motion.div
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                                 className="w-full flex flex-col items-center gap-3 pt-2 border-t border-slate-50"
                               >
                                 {(() => {
                                   const videoResponse = instagramPostResponses.find(p => p.type === 'video');
-                                  const hasValidPermalink = videoResponse?.permalink && 
-                                                           typeof videoResponse.permalink === 'string' && 
-                                                           videoResponse.permalink.trim().length > 0;
-                                  
+                                  const hasValidPermalink = videoResponse?.permalink &&
+                                    typeof videoResponse.permalink === 'string' &&
+                                    videoResponse.permalink.trim().length > 0;
+
                                   return hasValidPermalink ? (
                                     <>
                                       <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
-                                        <QRCodeSVG 
+                                        <QRCodeSVG
                                           value={videoResponse.permalink}
                                           size={200}
                                           level="H"
                                           includeMargin={true}
                                         />
                                       </div>
-                                      <a 
-                                        href={videoResponse.permalink} 
+                                      <a
+                                        href={videoResponse.permalink}
                                         target="_blank"
                                         className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
                                       >
@@ -1351,7 +1351,7 @@ export const StepFinal = () => {
                           {/* Images Status */}
                           {generatedPosts.map((post, idx) => {
                             const response = instagramPostResponses.filter(p => p.type === 'image')[idx];
-                            
+
                             return (
                               <div key={idx} className="flex flex-col gap-3 p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
                                 <div className="flex items-center gap-3">
@@ -1378,29 +1378,29 @@ export const StepFinal = () => {
                                 </div>
 
                                 {response && (
-                                  <motion.div 
+                                  <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     className="w-full flex flex-col items-center gap-3 pt-2 border-t border-slate-50"
                                   >
                                     {(() => {
-                                      const hasValidPermalink = response?.permalink && 
-                                                               typeof response.permalink === 'string' && 
-                                                               response.permalink.trim().length > 0;
-                                      
+                                      const hasValidPermalink = response?.permalink &&
+                                        typeof response.permalink === 'string' &&
+                                        response.permalink.trim().length > 0;
+
                                       return hasValidPermalink ? (
                                         <>
                                           <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
-                                            <QRCodeSVG 
+                                            <QRCodeSVG
                                               value={response.permalink}
                                               size={200}
                                               level="H"
                                               includeMargin={true}
                                             />
                                           </div>
-                                          <a 
-                                            href={response.permalink} 
-                                            target="_blank" 
+                                          <a
+                                            href={response.permalink}
+                                            target="_blank"
                                             className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
                                           >
                                             Ver en Instagram <ArrowRight className="w-4 h-4" />
@@ -1419,14 +1419,14 @@ export const StepFinal = () => {
                             );
                           })}
                         </div>
-                        
+
                         {/* Error State */}
                         {instagramApiResponse?.error && (
-                           <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
-                             Error: {instagramApiResponse.error}
-                           </div>
+                          <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+                            Error: {instagramApiResponse.error}
+                          </div>
                         )}
-                        
+
                         {/* Finish Button */}
                         {!isPostingToInstagram && instagramPostResponses.length > 0 && (
                           <Button
