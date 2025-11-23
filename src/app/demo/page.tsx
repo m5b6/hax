@@ -7,11 +7,14 @@ import { StepIdentity } from "@/components/wizard/StepIdentity";
 import { StepStrategy } from "@/components/wizard/StepStrategy";
 import { StepFinal } from "@/components/wizard/StepFinal";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { SlidePresentation } from "@/components/slides/SlidePresentation";
+import { Slide01Adsombroso } from "@/components/slides/Slide01Adsombroso";
 
 function WizardContent() {
     const searchParams = useSearchParams();
     const initialStep = parseInt(searchParams.get("step") || "0");
     const [step, setStep] = useState(initialStep);
+    const [showSlides, setShowSlides] = useState(true);
     const wizardStore = useWizardStore();
 
     // Update step if URL param changes
@@ -63,6 +66,25 @@ function WizardContent() {
     };
 
     const currentStepData = steps[step] || steps[0];
+
+    // Define the slides
+    const slides = [
+        {
+            id: "slide-01-adsombroso",
+            component: <Slide01Adsombroso />,
+        },
+        // More slides will be added here
+    ];
+
+    // Show slides first, then wizard
+    if (showSlides) {
+        return (
+            <SlidePresentation
+                slides={slides}
+                onComplete={() => setShowSlides(false)}
+            />
+        );
+    }
 
     return (
         <WizardLayout

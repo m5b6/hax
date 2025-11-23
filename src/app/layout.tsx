@@ -5,6 +5,7 @@ import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { WizardStoreProvider } from "@/contexts/WizardStore";
+import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const DynamicColorBends = dynamic(() => import("@/components/DynamicColorBends"), {
@@ -15,12 +16,21 @@ const DraggableStoreDebug = dynamic(() => import("@/components/DraggableStoreDeb
   ssr: false,
 });
 
-const inter = Inter({ 
-  subsets: ["latin"], 
+function ConditionalStoreDebug() {
+  const pathname = usePathname();
+  const isDemo = pathname?.startsWith("/demo");
+
+  if (isDemo) return null;
+
+  return <DraggableStoreDebug />;
+}
+
+const inter = Inter({
+  subsets: ["latin"],
   variable: "--font-inter",
   weight: ["400", "500", "600"],
 });
-const instrumentSerif = Instrument_Serif({ 
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: ["400"],
   variable: "--font-instrument-serif",
@@ -44,7 +54,7 @@ export default function RootLayout({
               <DynamicColorBends />
             </div>
             {children}
-            <DraggableStoreDebug />
+            <ConditionalStoreDebug />
           </WizardStoreProvider>
         </BrandProvider>
       </body>
