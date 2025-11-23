@@ -882,7 +882,7 @@ export const StepFinal = () => {
                                     <img
                                       src={brandLogoUrl}
                                       alt=""
-                                      className="w-full h-full object-cover"
+                                      className="w-full h-full object-contain"
                                       referrerPolicy="no-referrer"
                                     />
                                   )
@@ -1021,7 +1021,7 @@ export const StepFinal = () => {
                             dangerouslySetInnerHTML={{ __html: brandLogoUrl }}
                           />
                         ) : (
-                          <img src={brandLogoUrl} alt="Profile" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
+                          <img src={brandLogoUrl} alt="Profile" className="w-full h-full object-contain rounded-full" referrerPolicy="no-referrer" />
                         )
                       ) : (
                         <div className="w-full h-full bg-slate-200 rounded-full" />
