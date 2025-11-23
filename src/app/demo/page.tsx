@@ -7,11 +7,19 @@ import { StepIdentity } from "@/components/wizard/StepIdentity";
 import { StepStrategy } from "@/components/wizard/StepStrategy";
 import { StepFinal } from "@/components/wizard/StepFinal";
 import { useWizardStore } from "@/contexts/WizardStore";
+import { SlidePresentation } from "@/components/slides/SlidePresentation";
+import { Slide01Adsombroso } from "@/components/slides/Slide01Adsombroso";
+import { Slide02BigProblem } from "@/components/slides/Slide02BigProblem";
+import { Slide03MoreProblems } from "@/components/slides/Slide03MoreProblems";
+import { Slide04UniversalProblem } from "@/components/slides/Slide04UniversalProblem";
+import { Slide05WhyMeta } from "@/components/slides/Slide05WhyMeta";
+import { Slide06Adsombroso } from "@/components/slides/Slide06Adsombroso";
 
 function WizardContent() {
     const searchParams = useSearchParams();
     const initialStep = parseInt(searchParams.get("step") || "0");
     const [step, setStep] = useState(initialStep);
+    const [showSlides, setShowSlides] = useState(true);
     const wizardStore = useWizardStore();
 
     // Update step if URL param changes
@@ -63,6 +71,44 @@ function WizardContent() {
     };
 
     const currentStepData = steps[step] || steps[0];
+
+    // Define the slides
+    const slides = [
+        {
+            id: "slide-01-adsombroso",
+            component: <Slide01Adsombroso />,
+        },
+        {
+            id: "slide-02-big-problem",
+            component: <Slide02BigProblem />,
+        },
+        {
+            id: "slide-03-more-problems",
+            component: <Slide03MoreProblems />,
+        },
+        {
+            id: "slide-04-universal-problem",
+            component: <Slide04UniversalProblem />,
+        },
+        {
+            id: "slide-05-why-meta",
+            component: <Slide05WhyMeta />,
+        },
+        {
+            id: "slide-06-adsombroso",
+            component: <Slide06Adsombroso />,
+        },
+    ];
+
+    // Show slides first, then wizard
+    if (showSlides) {
+        return (
+            <SlidePresentation
+                slides={slides}
+                onComplete={() => setShowSlides(false)}
+            />
+        );
+    }
 
     return (
         <WizardLayout
