@@ -11,10 +11,17 @@ import { useBrand } from "@/contexts/BrandContext";
 import { StepTransitionLoader } from "./StepTransitionLoader";
 import { RotatingLoader } from "@/components/ui/rotating-loader";
 import type { RotatingLoaderItem } from "@/components/ui/rotating-loader";
+import { usePathname } from "next/navigation";
 
 const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0iI2NjYyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjwvdGV4dD48L3N2Zz4=';
 
-// Helper to get icon component by name from lucide-react
+const DEMO_IMAGE_URLS = [
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/gemini_2_5_flash___A_minimalist_composition_featuring_the_iPhone_17_Pro_on_a_clean_white_background_.png", 
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/Runway_Flash_2_5_Image_The_iPhone_17_Pro__in_112325+(1).png", 
+  "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/result.jpg", 
+];
+const DEMO_VIDEO_URL = "https://vita-bucket-1.s3.us-east-1.amazonaws.com/landing-assets/iphone-17pro.mp4"; 
+
 const getIconByName = (iconName: string): LucideIcon => {
   if (!iconName || typeof iconName !== 'string') {
     return Sparkles;
@@ -46,6 +53,10 @@ export const StepFinal = () => {
   const wizardStore = useWizardStore();
   const { brandLogoUrl, brandColors } = useBrand();
   const brandName = wizardStore.getInput("name") || "";
+
+  // Detectar si estamos en modo demo
+  const pathname = usePathname();
+  const isDemoMode = pathname === "/demo";
 
   // Get all data from store
   const data = {
@@ -259,6 +270,32 @@ export const StepFinal = () => {
     setShowGeneratingText(true);
     setGenerationCounter(0);
 
+    // Si estamos en modo demo, simular loading de 10s y usar URLs hardcodeadas
+    if (isDemoMode) {
+      try {
+        // Simular loading de 10 segundos
+        await new Promise(resolve => setTimeout(resolve, 10000));
+
+        // Crear posts con URLs hardcodeadas
+        const demoPosts: GeneratedPost[] = DEMO_IMAGE_URLS.map((url, idx) => ({
+          id: idx + 1,
+          description: `Post de demostración ${idx + 1} generado con tecnología de IA avanzada`,
+          caption: `Caption optimizado para máximo engagement en redes sociales - Post ${idx + 1}`,
+          imageUrl: url,
+        }));
+
+        setGeneratedPosts(demoPosts);
+        wizardStore.setAgentResponse("generatedPosts", demoPosts);
+      } catch (error: any) {
+        console.error("Error en modo demo:", error);
+        setPostGenerationError(error.message);
+      } finally {
+        setIsGeneratingPosts(false);
+      }
+      return;
+    }
+
+    // Modo normal - llamada real a API
     const wizardData = {
       inputs: wizardStore.getAllInputs(),
       agentResponses: wizardStore.getAllAgentResponses(),
@@ -360,7 +397,19 @@ export const StepFinal = () => {
 
     const generateVideo = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 6000));
+        // Si estamos en modo demo, usar URL hardcodeada con loading breve
+        if (isDemoMode) {
+          // Simular un pequeño loading para realismo (2 segundos)
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          setVideoResult(DEMO_VIDEO_URL);
+          wizardStore.setAgentResponse("videoResult", DEMO_VIDEO_URL);
+          setIsGeneratingVideo(false);
+          return;
+        }
+
+        // Modo normal - llamada real a Runway
+        // Try to find an image from analysis (Logo) or from generated posts
+        let imageUrl = "";
 
         const mockVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
@@ -374,7 +423,7 @@ export const StepFinal = () => {
     };
 
     generateVideo();
-  }, [displayPrompt, isGenerating, wizardStore, generatedPosts, brandLogoUrl]);
+  }, [displayPrompt, isGenerating, wizardStore, generatedPosts, brandLogoUrl, isDemoMode]);
 
   // Carousel state
   const [currentSlide, setCurrentSlide] = useState(0);
