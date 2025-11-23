@@ -48,8 +48,7 @@ export function Slide01Adsombroso() {
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.8, delay: 0.5 }}
-                        className="text-[96px] font-bold text-white leading-none mb-8 tracking-tight"
-                        style={{ fontFamily: 'var(--font-inter)' }}
+                        className="text-[96px] font-bold text-white leading-none mb-8 tracking-tight font-serif"
                     >
                         ADSOMBROSO!
                     </motion.h1>

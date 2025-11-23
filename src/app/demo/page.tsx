@@ -9,6 +9,8 @@ import { StepFinal } from "@/components/wizard/StepFinal";
 import { useWizardStore } from "@/contexts/WizardStore";
 import { SlidePresentation } from "@/components/slides/SlidePresentation";
 import { Slide01Adsombroso } from "@/components/slides/Slide01Adsombroso";
+import { Slide02BigProblem } from "@/components/slides/Slide02BigProblem";
+import { Slide03MoreProblems } from "@/components/slides/Slide03MoreProblems";
 
 function WizardContent() {
     const searchParams = useSearchParams();
@@ -72,6 +74,14 @@ function WizardContent() {
         {
             id: "slide-01-adsombroso",
             component: <Slide01Adsombroso />,
+        },
+        {
+            id: "slide-02-big-problem",
+            component: <Slide02BigProblem />,
+        },
+        {
+            id: "slide-03-more-problems",
+            component: <Slide03MoreProblems />,
         },
         // More slides will be added here
     ];
